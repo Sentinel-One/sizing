@@ -2,6 +2,8 @@ import subprocess
 import json
 import argparse
 
+# Usage gcp_units --project_id <project_id>
+
 parser = argparse.ArgumentParser(prog="PingSafe GCP Unit Audit")
 parser.add_argument("--project_id", help="GCP Project ID", required=True)
 args = parser.parse_args()
