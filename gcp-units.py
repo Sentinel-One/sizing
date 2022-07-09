@@ -121,7 +121,7 @@ class PingSafeGCPUnitAudit:
         self.add_result("Big Query Datasets", big_query_datasets)
         self.add_result("Big Query Tables", big_query_tables)
 
-        self.add_result("Pub Sub Lite Topics", self.count_pubsub_lite_topics())
+        # self.add_result("Pub Sub Lite Topics", self.count_pubsub_lite_topics())
         # keyrings, crypto_keys = self.count_keyrings_and_crypto_keys()
         # self.add_result("Key Rings", keyrings)
         # self.add_result("Crypto Keys", crypto_keys)
@@ -288,7 +288,7 @@ class PingSafeGCPUnitAudit:
         if not self.is_api_enabled(["pubsublite.googleapis.com"]):
             return 0
         topic_count = 0
-        for location in GCP_LOCATIONS:
+        for location in GCP_CF_LOCATIONS:
             print('getting data for count_pubsub_lite_topics location:', location)
             output = subprocess.check_output(
                 f"gcloud pubsub lite-topics list --location {location} --format json",
@@ -328,7 +328,7 @@ class PingSafeGCPUnitAudit:
         if not self.is_api_enabled(["cloudfunctions.googleapis.com"]):
             return 0
         output = subprocess.check_output(
-            f"gcloud functions list --regions={','.join(GCP_LOCATIONS)} --format json",
+            f"gcloud functions list --regions={','.join(GCP_CF_LOCATIONS)} --format json",
             text=True, shell=True
         )
         j = json.loads(output)
@@ -340,7 +340,7 @@ class PingSafeGCPUnitAudit:
         print('getting data for count_keyrings_and_crypto_keys')
         if not self.is_api_enabled(["cloudkms.googleapis.com"]):
             return 0, 0
-        locations = ["global"] + GCP_LOCATIONS
+        locations = ["global"] + GCP_KMS_REGIONS
         key_ring_count, crypto_key_count = 0, 0
         for location in locations:
             output = subprocess.check_output(
@@ -386,7 +386,7 @@ class PingSafeGCPUnitAudit:
         return dataset_count, table_count
 
 
-GCP_LOCATIONS = [
+GCP_CF_LOCATIONS = [
     'us-west1',
     'us-central1',
     'us-east1',
@@ -410,6 +410,43 @@ GCP_LOCATIONS = [
     'asia-southeast1',
     'asia-southeast2',
     'asia-northeast3'
+]
+
+GCP_KMS_REGIONS = [
+    'asia-east1',
+    'asia-east2',
+    'asia-northeast1',
+    'asia-northeast2',
+    'asia-northeast3',
+    'asia-south1',
+    'asia-south2',
+    'asia-southeast1',
+    'asia-southeast2',
+    'australia-southeast1',
+    'australia-southeast2',
+    'europe-central2',
+    'europe-north1',
+    'europe-west1',
+    'europe-west2',
+    'europe-west3',
+    'europe-west4',
+    'europe-west6',
+    'europe-west8',
+    'europe-west9',
+    'europe-southwest1',
+    'northamerica-northeast1',
+    'northamerica-northeast2',
+    'us-central1',
+    'us-east1',
+    'us-east4',
+    'us-east5',
+    'us-west1',
+    'us-west2',
+    'us-west3',
+    'us-west4',
+    'us-south1',
+    'southamerica-east1',
+    'southamerica-west1'
 ]
 
 PingSafeGCPUnitAudit(PROJECT_ID).count_all()
