@@ -103,6 +103,7 @@ class PingSafeGCPUnitAudit:
         # All iam users also includes service accounts
         all_iam_users = self.count_all_iam_users()
         all_service_account_users = self.count_all_service_account_users()
+        self.total_resource_count -= all_service_account_users
         self.add_result("IAM Users", all_iam_users - all_service_account_users)
         self.add_result("Service Account Users", all_service_account_users)
 
@@ -368,6 +369,8 @@ class PingSafeGCPUnitAudit:
             f"bq ls --project_id {self.project_id} --format json",
             text=True, shell=True
         )
+        if len(output) == 0:
+            output = "[]"
         datasets = json.loads(output)
         dataset_count = len(datasets)
         for dataset in datasets:
@@ -375,6 +378,8 @@ class PingSafeGCPUnitAudit:
                 f"bq ls --project_id {self.project_id} --max_results 10000 --format json {dataset['id']}",
                 text=True, shell=True
             )
+            if len(output) == 0:
+                output = "[]"
             tables = json.loads(output)
             table_count += len(tables)
         self.total_resource_count += dataset_count + table_count
