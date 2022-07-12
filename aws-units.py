@@ -22,22 +22,12 @@ def aws_describe_regions(profile='default'):
     return [region_object['RegionName'] for region_object in j['Regions']]
 
 
-def components_check():
-    return True
-
-
 class PingSafeAWSUnitAudit:
     def __init__(self, profile):
         self.profile = profile
         self.file_path = f"aws-{profile}-units.csv"
         self.total_resource_count = 0
         self.regions = aws_describe_regions(profile)
-
-        print("aws regions enabled for profile:", ",".join(self.regions))
-
-        if not components_check():
-            raise Exception("check installed components")
-        print("found all required cli components")
 
         with open(self.file_path, 'w') as f:
             # Write Header
