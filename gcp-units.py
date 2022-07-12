@@ -61,7 +61,7 @@ class PingSafeGCPUnitAudit:
     def __init__(self, project_id):
         self.existing_permissions = {}
         self.project_id = project_id
-        self.file_path = f"{project_id}-units.csv"
+        self.file_path = f"gcp-{project_id}-units.csv"
         self.total_resource_count = 0
 
         if not gcloud_set_project(project_id):
