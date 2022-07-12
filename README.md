@@ -20,6 +20,10 @@ Output (in directory from where script is run)
 ```
 gcp-{project_id}-units.csv
 ```
+Important Information:
+- `--project_id` is a required flag
+- If you have multiple project ids, the script needs to be run for each one separately
+- The script may take a longer time to run based on the size of the cloud for the project that is being run for
 
 ### AWS Script
 
@@ -33,6 +37,13 @@ To run the script:
 ```bash
 python3 ./aws-units.py --profiles default profile_2 ... profile_n
 ```
+
+Important Information:
+- Script requires at least one profile to be passed with the __required__ `--profiles` flag
+- if there are no named profiles configured, the script requires the `"default"` profile to be passed, eg: `--profiles default`
+- For more information on named profile configuration for aws cli, please refer to https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html
+- The script may take a longer time to run based on the size of the cloud for which it is being run for 
+- If you pass many profiles, it may take a considerable amount of time, subject to the size of the cloud
 
 Output (in directory from where script is run)
 ```
