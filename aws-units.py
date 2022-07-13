@@ -6,20 +6,33 @@ import argparse
 
 parser = argparse.ArgumentParser(prog="PingSafe AWS Unit Audit")
 parser.add_argument("--profiles", help="AWS profile(s) separated by space", nargs='+', default=[], required=True)
+parser.add_argument("--regions", help="Regions to run script for", nargs='+', default=[], required=False)
 args = parser.parse_args()
 
 PROFILES = args.profiles
+REGIONS = args.regions
 
 
 def aws_describe_regions(profile='default'):
     output = subprocess.check_output(
-        f"aws --profile {profile} ec2 describe-regions --output json",
+        f"aws --profile {profile} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json",
         text=True, shell=True, stderr=subprocess.STDOUT
     )
     if f"The config profile ({profile}) could not be found" in output:
         raise Exception(f"found invalid aws profile {profile}")
     j = json.loads(output)
-    return [region_object['RegionName'] for region_object in j['Regions']]
+    all_regions_active = [region_object['RegionName'] for region_object in j['Regions']]
+    if len(REGIONS) == 0:
+        return all_regions_active
+
+    # if only some regions to be whitelisted
+    print('found whitelisted regions', REGIONS)
+    regions_to_run = []
+    for region in all_regions_active:
+        if region in REGIONS:
+            regions_to_run.append(region)
+    print("valid whitelisted regions", regions_to_run)
+    return regions_to_run
 
 
 class PingSafeAWSUnitAudit:
@@ -94,6 +107,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j.get("items", []))
         self.total_resource_count += c
         return c
@@ -106,6 +121,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j)
         self.total_resource_count += c
         return c
@@ -118,6 +135,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j)
         self.total_resource_count += c
         return c
@@ -129,6 +148,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j.get("items", []))
         self.total_resource_count += c
         return c
@@ -140,6 +161,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j)
         self.total_resource_count += c
         return c
@@ -152,6 +175,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j.get("LoadBalancerDescriptions", []))
         self.total_resource_count += c
         return c
@@ -164,6 +189,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j.get("LoadBalancers", []))
         self.total_resource_count += c
         return c
@@ -175,6 +202,8 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
         c = len(j.get("DBInstances", []))
         self.total_resource_count += c
         return c
@@ -187,7 +216,9 @@ class PingSafeAWSUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
-        c = c = len(j)
+        c = len(j)
+        if j is None or len(j) == 0:
+            return 0
         self.total_resource_count += c
         return c
 
@@ -199,6 +230,8 @@ class PingSafeAWSUnitAudit:
         )
         j = json.loads(output)
         c = len(j.get("Items", []))
+        if j is None or len(j) == 0:
+            return 0
         self.total_resource_count += c
         return c
 
@@ -211,6 +244,8 @@ class PingSafeAWSUnitAudit:
         )
         j = json.loads(output)
         c = len(j)
+        if j is None or len(j) == 0:
+            return 0
         self.total_resource_count += c
         return c
 
@@ -222,6 +257,8 @@ class PingSafeAWSUnitAudit:
         )
         j = json.loads(output)
         c = len(j.get("clusters", []))
+        if j is None or len(j) == 0:
+            return 0
         self.total_resource_count += c
         return c
 
@@ -233,6 +270,8 @@ class PingSafeAWSUnitAudit:
         )
         j = json.loads(output)
         c = len(j)
+        if j is None or len(j) == 0:
+            return 0
         self.total_resource_count += c
         return c
 
