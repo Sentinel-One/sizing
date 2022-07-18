@@ -2,7 +2,7 @@ import subprocess
 import json
 import argparse
 
-# Usage aws_units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
+# Usage python3 ./aws-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 
 parser = argparse.ArgumentParser(prog="PingSafe AWS Unit Audit")
 parser.add_argument("--profiles", help="AWS profile(s) separated by space", nargs='+', default=[], required=True)
