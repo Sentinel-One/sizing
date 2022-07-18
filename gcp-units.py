@@ -201,7 +201,7 @@ class PingSafeGCPUnitAudit:
         if not self.is_api_enabled(["iam.googleapis.com", "orgpolicy.googleapis.com"]):
             return 0
         output = subprocess.check_output(
-            "gcloud projects get-iam-policy pingsafe-prod --flatten=\"bindings[].members\" --format json",
+            f"gcloud projects get-iam-policy {self.project_id} --flatten=\"bindings[].members\" --format json",
             text=True, shell=True
         )
         j = json.loads(output)
