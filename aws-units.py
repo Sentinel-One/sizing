@@ -83,11 +83,11 @@ class PingSafeAWSUnitAudit:
             eks_cluster_count += self.count_eks_clusters(region)
             eb_env_count += self.count_elastic_beanstalk_environments(region)
 
-        self.add_result("ApiGateway V1 Rest APIs", cloudfront_distribution_count)
+        self.add_result("ApiGateway V1 Rest APIs", agv1_rest_api_count)
         self.add_result("CloudFront Distributions", cloudfront_distribution_count)
         self.add_result("Elastic IPs", elastic_ips_count)
         self.add_result("EC2 Instances", ec2_instances_count)
-        self.add_result("ECR Repositories", ec2_instances_count)
+        self.add_result("ECR Repositories", ecr_repositories_count)
         self.add_result("LoadBalancer V1 Instances", lb_v1_count)
         self.add_result("LoadBalancer V2 Instances", lb_v2_count)
         self.add_result("RDB DB instances", rdb_db_instance_count)
@@ -144,7 +144,7 @@ class PingSafeAWSUnitAudit:
     def count_ec2_instances(self, region):
         print('getting data for count_ec2_instances', region)
         output = subprocess.check_output(
-            f"aws --region {region} --profile {self.profile} ec2 describe-instances --output json --no-paginate",
+            f"aws --region {region} --profile {self.profile} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate",
             text=True, shell=True
         )
         j = json.loads(output)
