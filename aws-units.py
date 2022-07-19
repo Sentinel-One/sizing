@@ -150,7 +150,7 @@ class PingSafeAWSUnitAudit:
         j = json.loads(output)
         if j is None or len(j) == 0:
             return 0
-        c = len(j.get("items", []))
+        c = len(j)
         self.total_resource_count += c
         return c
 
