@@ -334,7 +334,7 @@ class PingSafeGCPUnitAudit:
                 f"bq ls --project_id {self.project_id} --max_results 10000 --format json {dataset['id']}",
                 text=True, shell=True
             )
-            if len(output) == 0:
+            if output is None or len(output.strip()) == 0:
                 output = "[]"
             tables = json.loads(output)
             table_count += len(tables)
