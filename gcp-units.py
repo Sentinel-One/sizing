@@ -1,6 +1,6 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
 
 # Usage python3 ./gcp-units.py --project_id <project_id>
 
@@ -325,7 +325,7 @@ class PingSafeGCPUnitAudit:
             f"bq ls --project_id {self.project_id} --format json",
             text=True, shell=True
         )
-        if len(output) == 0:
+        if output is None or len(output.strip()) == 0:
             output = "[]"
         datasets = json.loads(output)
         dataset_count = len(datasets)
