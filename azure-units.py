@@ -1,8 +1,7 @@
 import subprocess
 import json
 import argparse
-
-# Usage python3 ./aws-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
+# Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
 
 parser = argparse.ArgumentParser(prog="PingSafe Azure Unit Audit")
 parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[], required=False)
@@ -12,10 +11,9 @@ SUBSCRIPTIONS = args.subscriptions
 
 
 def call_with_output(command):
-    # print("Running command: ",command)
     success = False
     try:
-        output = subprocess.check_output(command, text=True, shell=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(command, text=True, shell=True)
         success = True 
     except subprocess.CalledProcessError as e:
         output = e.output
@@ -63,11 +61,22 @@ class PingSafeAWSUnitAudit:
     def count_all(self):
         self.add_result("App Services", self.count_app_services())
         accounts = self.list_storage_accounts()
+        count_storage_blob_container = 0
+        count_storage_file_share = 0
+        count_storage_queue = 0
+        count_storage_table = 0
+        for account in accounts:
+            key = self.get_storage_account_keys(account)
+            count_storage_blob_container += self.count_storage_blob_container(account, key)
+            count_storage_file_share += self.count_storage_file_share(account, key)
+            count_storage_queue += self.count_storage_queue(account, key)
+            count_storage_table += self.count_storage_table(account, key)
+
         self.add_result("Storage Account", self.count_storage_accounts(accounts))
-        # self.add_result("Storage Blob Container", self.count_storage_blob_container(accounts))
-        # self.add_result("Storage File Share", self.count_storage_file_share(accounts))
-        # self.add_result("Storage Queue", self.count_storage_queue(accounts))
-        # self.add_result("Storage Table", self.count_storage_table(accounts))
+        self.add_result("Storage Blob Container", count_storage_blob_container)
+        self.add_result("Storage File Share", count_storage_file_share)
+        self.add_result("Storage Queue", count_storage_queue)
+        self.add_result("Storage Table", count_storage_table)
 
         self.add_result("Virtual Machine", self.count_vm_instances())
         self.add_result("Compute Disks", self.count_disks())
@@ -91,46 +100,41 @@ class PingSafeAWSUnitAudit:
         self.add_result("Total Resource", self.total_resource_count)
         print("results stored at", self.file_path)
 
-    def count_storage_blob_container(self, accounts):
+    def count_storage_blob_container(self, account, key):
         print('getting data for count_storage_blob_container')
-        success, output = call_with_output(f"az storage blob directory list --container-name  {self.subscription_flag} --output json")
+        success, output = call_with_output(f"az storage container list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
-    def count_storage_file_share(self, accounts):
-        raise NotImplementedError()
+    def count_storage_file_share(self, account, key):
         print('getting data for count_storage_file_share')
-        success, output = call_with_output(f"az appservice ase list {self.subscription_flag} --output json")
+        success, output = call_with_output(f"az storage share list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
-    def count_storage_queue(self):
-        raise NotImplementedError()
+    def count_storage_queue(self, account, key):
         print('getting data for count_storage_queue')
-        success, output = call_with_output(f"az appservice ase list {self.subscription_flag} --output json")
+        success, output = call_with_output(f"az storage queue list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
-    def count_storage_table(self):
-        raise NotImplementedError()
+    def count_storage_table(self, account, key):
         print('getting data for count_storage_table')
-        success, output = call_with_output(f"az appservice ase list {self.subscription_flag} --output json")
+        success, output = call_with_output(f"az storage table list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
-
-
 
     def count_app_services(self):
         print('getting data for count_app_services')
@@ -143,6 +147,12 @@ class PingSafeAWSUnitAudit:
 
     def list_storage_accounts(self):
         success, output = call_with_output(f"az storage account list {self.subscription_flag}  --query '[].name' --output json")
+        if not success:
+            raise Exception("Failed with error: ",output)
+        return json.loads(output)
+    
+    def get_storage_account_keys(self, account):
+        success, output = call_with_output(f"az storage account keys list --account-name {account} {self.subscription_flag}  --query '[0].value' --output json")
         if not success:
             raise Exception("Failed with error: ",output)
         return json.loads(output)
