@@ -50,3 +50,25 @@ Output (in directory from where script is run)
 aws-{profile}-units.csv
 aws-{profile2}-units.csv
 ```
+
+### Azure Script
+
+Pre-requisites:
+1. `az` cli
+
+`azure-units.py`
+
+To run the script:
+```bash
+python3 ./azure-units.py --subscriptions <subscription_id_1> <subscription_id_2>
+```
+
+Important Information:
+- Script requires at least one subscriptions to be passed with the __required__ `--subscriptions` flag
+- The script may take a longer time to run based on the size of the cloud for the subscriptions that is being run for
+
+Output (in directory from where script is run)
+```
+azure-{subscription}-units.csv
+azure-{subscription}-units.csv
+```
