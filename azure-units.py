@@ -17,9 +17,11 @@ def call_with_output(command):
         try:
             output = subprocess.check_output(command, text=True, shell=True)
             success = True
+            break
         except subprocess.CalledProcessError as e:
             output = e.output
         retries = retries - 1
+        print(f"retries {retries}/3")
     return(success, output)
 
 def check_extenstion(name):
