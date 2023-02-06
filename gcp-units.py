@@ -103,10 +103,12 @@ class PingSafeGCPUnitAudit:
         # All iam users also includes service accounts
         all_iam_users = self.count_all_iam_users()
         all_service_account_users = self.count_all_service_account_users()
-        self.total_resource_count -= all_service_account_users
-        self.add_result("IAM Users", all_iam_users - all_service_account_users)
-        self.add_result("Service Account Users", all_service_account_users)
-
+        if type(all_service_account_users) != "<class 'int'>":
+            pass
+        else:
+            self.total_resource_count -= all_service_account_users
+            self.add_result("IAM Users", all_iam_users - all_service_account_users)
+            self.add_result("Service Account Users", all_service_account_users)
         self.add_result("Kubernetes Clusters", self.count_kubernetes_clusters())
         self.add_result("Alert Policies", self.count_alert_policies())
         self.add_result("Log Sinks", self.count_log_sinks())
@@ -127,7 +129,7 @@ class PingSafeGCPUnitAudit:
     def count_load_balancers(self):
         print('getting data for count_load_balancers')
         if not self.is_api_enabled(["compute.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'compute.googleapis.com'"
         output = subprocess.check_output(
             "gcloud compute forwarding-rules list --format json",
             text=True, shell=True
@@ -139,7 +141,7 @@ class PingSafeGCPUnitAudit:
     def count_compute_instances(self):
         print('getting data for count_compute_instances')
         if not self.is_api_enabled(["compute.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'compute.googleapis.com'"
         output = subprocess.check_output(
             "gcloud compute instances list --format json",
             text=True, shell=True
@@ -151,7 +153,7 @@ class PingSafeGCPUnitAudit:
     def count_disks(self):
         print('getting data for count_disks')
         if not self.is_api_enabled(["compute.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'compute.googleapis.com'"
         output = subprocess.check_output(
             "gcloud compute disks list --format json",
             text=True, shell=True
@@ -163,7 +165,7 @@ class PingSafeGCPUnitAudit:
     def count_vpc_networks(self):
         print('getting data for count_vpc_networks')
         if not self.is_api_enabled(["compute.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'compute.googleapis.com'"
         output = subprocess.check_output(
             "gcloud compute networks list --format json",
             text=True, shell=True
@@ -175,7 +177,7 @@ class PingSafeGCPUnitAudit:
     def count_firewalls(self):
         print('getting data for count_firewalls')
         if not self.is_api_enabled(["compute.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'compute.googleapis.com'"
         output = subprocess.check_output(
             "gcloud compute firewall-rules list --format json",
             text=True, shell=True
@@ -187,7 +189,7 @@ class PingSafeGCPUnitAudit:
     def count_managed_dns_zones(self):
         print('getting data for count_managed_dns_zones')
         if not self.is_api_enabled(["dns.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'dns.googleapis.com'"
         output = subprocess.check_output(
             "gcloud dns managed-zones list --format json",
             text=True, shell=True
@@ -199,7 +201,7 @@ class PingSafeGCPUnitAudit:
     def count_all_iam_users(self):
         print('getting data for count_all_iam_users')
         if not self.is_api_enabled(["iam.googleapis.com", "orgpolicy.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'orgpolicy.googleapis.com'"
         output = subprocess.check_output(
             f"gcloud projects get-iam-policy {self.project_id} --flatten=\"bindings[].members\" --format json",
             text=True, shell=True
@@ -211,7 +213,7 @@ class PingSafeGCPUnitAudit:
     def count_all_service_account_users(self):
         print('getting data for count_all_service_account_users')
         if not self.is_api_enabled(["iam.googleapis.com", "orgpolicy.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'orgpolicy.googleapis.com'"
         output = subprocess.check_output(
             "gcloud iam service-accounts list --format json",
             text=True, shell=True
@@ -223,7 +225,7 @@ class PingSafeGCPUnitAudit:
     def count_kubernetes_clusters(self):
         print('getting data for count_kubernetes_clusters')
         if not self.is_api_enabled(["container.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'container.googleapis.com'"
         output = subprocess.check_output(
             "gcloud container clusters list --format json",
             text=True, shell=True
@@ -235,7 +237,7 @@ class PingSafeGCPUnitAudit:
     def count_alert_policies(self):
         print('getting data for count_alert_policies')
         if not self.is_api_enabled(["monitoring.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'monitoring.googleapis.com'"
         output = subprocess.check_output(
             "gcloud alpha monitoring policies list --format json",
             text=True, shell=True
@@ -247,7 +249,7 @@ class PingSafeGCPUnitAudit:
     def count_log_sinks(self):
         print('getting data for count_log_sinks')
         if not self.is_api_enabled(["logging.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'logging.googleapis.com'"
         output = subprocess.check_output(
             "gcloud logging sinks list --format json",
             text=True, shell=True
@@ -259,7 +261,7 @@ class PingSafeGCPUnitAudit:
     def count_sql_instances(self):
         print('getting data for count_sql_instances')
         if not self.is_api_enabled(["sqladmin.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'sqladmin.googleapis.com'"
         output = subprocess.check_output(
             "gcloud sql instances list --format json",
             text=True, shell=True
@@ -271,7 +273,7 @@ class PingSafeGCPUnitAudit:
     def count_storage_buckets(self):
         print('getting data for count_storage_buckets')
         if not self.is_api_enabled(["storage.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'storage.googleapis.com'"
         output = subprocess.check_output(
             f"gsutil ls -p {self.project_id}",
             text=True, shell=True
@@ -283,7 +285,7 @@ class PingSafeGCPUnitAudit:
     def count_pub_sub_topics(self):
         print('getting data for count_pub_sub_topics')
         if not self.is_api_enabled(["pubsub.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'pubsub.googleapis.com'"
         output = subprocess.check_output(
             "gcloud pubsub topics list --format json",
             text=True, shell=True
@@ -295,7 +297,7 @@ class PingSafeGCPUnitAudit:
     def count_spanner_instances(self):
         print('getting data for count_spanner_instances')
         if not self.is_api_enabled(["spanner.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'spanner.googleapis.com'"
         output = subprocess.check_output(
             "gcloud spanner instances list --format json",
             text=True, shell=True
@@ -307,7 +309,7 @@ class PingSafeGCPUnitAudit:
     def count_cloud_functions(self):
         print('getting data for count_cloud_functions')
         if not self.is_api_enabled(["cloudfunctions.googleapis.com"]):
-            return 0
+            return "insufficient permissions to fetch count: missing permissions for 'cloudfunctions.googleapis.com'"
         output = subprocess.check_output(
             f"gcloud functions list --regions={','.join(GCP_CF_LOCATIONS)} --format json",
             text=True, shell=True
@@ -319,7 +321,8 @@ class PingSafeGCPUnitAudit:
     def count_big_query_datasets_tables(self):
         print('getting data for count_big_query_datasets_tables')
         if not self.is_api_enabled(["bigquery.googleapis.com"]):
-            return 0, 0
+            return "insufficient permissions to fetch count: bigquery.googleapis.com", \
+                "insufficient permissions to fetch count: bigquery.googleapis.com"
         dataset_count, table_count = 0, 0
         output = subprocess.check_output(
             f"bq ls --project_id {self.project_id} --format json",
