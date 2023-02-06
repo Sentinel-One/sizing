@@ -37,7 +37,7 @@ def azure_show_subscription(subscription):
         return False
     return success
 
-class PingSafeAWSUnitAudit:
+class PingSafeAzureUnitAudit:
     def __init__(self, subscription):
         self.file_path = f"azure-{subscription}-units.csv" if subscription else 'azure-units.csv'
         self.subscription_flag = f'--subscription "{subscription}"'
@@ -101,7 +101,7 @@ class PingSafeAWSUnitAudit:
         print("results stored at", self.file_path)
 
     def count_storage_blob_container(self, account, key):
-        print('getting data for count_storage_blob_container')
+        print(f"getting storage account ({account}) data for count_storage_blob_container")
         success, output = call_with_output(f"az storage container list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
@@ -110,7 +110,7 @@ class PingSafeAWSUnitAudit:
         return len(j)
 
     def count_storage_file_share(self, account, key):
-        print('getting data for count_storage_file_share')
+        print(f"getting storage account ({account}) data for count_storage_file_share")
         success, output = call_with_output(f"az storage share list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
@@ -119,7 +119,7 @@ class PingSafeAWSUnitAudit:
         return len(j)
 
     def count_storage_queue(self, account, key):
-        print('getting data for count_storage_queue')
+        print(f"getting storage account ({account}) data for count_storage_queue")
         success, output = call_with_output(f"az storage queue list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
@@ -128,7 +128,7 @@ class PingSafeAWSUnitAudit:
         return len(j)
 
     def count_storage_table(self, account, key):
-        print('getting data for count_storage_table')
+        print(f"getting storage account ({account}) data for count_storage_table")
         success, output = call_with_output(f"az storage table list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
             raise Exception("Failed with error: ",output)
@@ -355,4 +355,4 @@ class PingSafeAWSUnitAudit:
 if __name__ == '__main__':
     subscriptions = SUBSCRIPTIONS if len(SUBSCRIPTIONS) > 0 else [None]
     for s in subscriptions:
-        PingSafeAWSUnitAudit(s).count_all()
+        PingSafeAzureUnitAudit(s).count_all()
