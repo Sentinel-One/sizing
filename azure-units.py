@@ -51,10 +51,10 @@ class PingSafeAzureUnitAudit:
         extensions= ("containerapp",)
         for extension in extensions:
             if not check_extenstion(extension):
-                print(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
+                raise Exception(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
             
         if not azure_show_subscription(subscription):
-            print(f"check azure subscription id/permissions subscription-id: {subscription}")
+            raise Exception(f"check azure subscription id/permissions subscription-id: {subscription}")
         
         with open(self.file_path, 'w') as f:
             f.write("Resource Type, Unit Counted\n")
