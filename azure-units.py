@@ -15,12 +15,9 @@ def call_with_output(command):
     retries = 3
     while(retries > 0 and not success ):
         try:
-            return 0
             output = subprocess.check_output(command, text=True, shell=True)
-            success = True 
+            success = True
         except subprocess.CalledProcessError as e:
-            output = e.output
-        except Exception as e:
             output = e.output
         retries = retries - 1
     return(success, output)
