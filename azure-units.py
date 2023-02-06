@@ -12,11 +12,16 @@ SUBSCRIPTIONS = args.subscriptions
 
 def call_with_output(command):
     success = False
-    try:
-        output = subprocess.check_output(command, text=True, shell=True)
-        success = True 
-    except subprocess.CalledProcessError as e:
-        output = e.output
+    retries = 3
+    while(retries > 0 and not success ):
+        try:
+            output = subprocess.check_output(command, text=True, shell=True)
+            success = True 
+        except subprocess.CalledProcessError as e:
+            output = e.output
+        except Exception as e:
+            output = e.output
+        retries = retries - 1
     return(success, output)
 
 def check_extenstion(name):
@@ -46,10 +51,10 @@ class PingSafeAzureUnitAudit:
         extensions= ("containerapp",)
         for extension in extensions:
             if not check_extenstion(extension):
-                raise Exception(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
+                print(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
             
         if not azure_show_subscription(subscription):
-            raise Exception(f"check azure subscription id/permissions subscription-id: {subscription}")
+            print(f"check azure subscription id/permissions subscription-id: {subscription}")
         
         with open(self.file_path, 'w') as f:
             f.write("Resource Type, Unit Counted\n")
@@ -104,7 +109,7 @@ class PingSafeAzureUnitAudit:
         print(f"getting storage account ({account}) data for count_storage_blob_container")
         success, output = call_with_output(f"az storage container list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -113,7 +118,7 @@ class PingSafeAzureUnitAudit:
         print(f"getting storage account ({account}) data for count_storage_file_share")
         success, output = call_with_output(f"az storage share list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -122,7 +127,7 @@ class PingSafeAzureUnitAudit:
         print(f"getting storage account ({account}) data for count_storage_queue")
         success, output = call_with_output(f"az storage queue list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -131,7 +136,7 @@ class PingSafeAzureUnitAudit:
         print(f"getting storage account ({account}) data for count_storage_table")
         success, output = call_with_output(f"az storage table list --account-key {key} --account-name {account} {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -140,7 +145,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_app_services')
         success, output = call_with_output(f"az appservice ase list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -148,13 +153,13 @@ class PingSafeAzureUnitAudit:
     def list_storage_accounts(self):
         success, output = call_with_output(f"az storage account list {self.subscription_flag}  --query '[].name' --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         return json.loads(output)
     
     def get_storage_account_keys(self, account):
         success, output = call_with_output(f"az storage account keys list --account-name {account} {self.subscription_flag}  --query '[0].value' --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         return json.loads(output)
     
     def count_storage_accounts(self, storage_accounts_list):
@@ -166,7 +171,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_vm_instances')
         success, output = call_with_output(f"az vm list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -175,7 +180,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_vm_instance_scale_sets')
         success, output = call_with_output(f"az vmss list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -184,7 +189,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_disks')
         success, output = call_with_output(f"az disk list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -194,7 +199,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_vpc_networks')
         success, output = call_with_output(f"az network vnet list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -203,7 +208,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_sql_server')
         success, output = call_with_output(f"az sql server list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -212,7 +217,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_postgres_server')
         success, output = call_with_output(f"az postgres server list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -221,7 +226,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_redis')
         success, output = call_with_output(f"az redis list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -230,7 +235,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_mysql_server')
         success, output = call_with_output(f"az mysql server list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -239,7 +244,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_network_watcher')
         success, output = call_with_output(f"az network watcher list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -248,7 +253,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_network_security_group')
         success, output = call_with_output(f"az network nsg list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -257,7 +262,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_key_vault')
         success, output = call_with_output(f"az keyvault list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -266,7 +271,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_kubernetes_clusters')
         success, output = call_with_output(f"az aks list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -275,7 +280,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_cdn_profile')
         success, output = call_with_output(f"az cdn profile list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -284,7 +289,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_container_registry')
         success, output = call_with_output(f"az acr list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -293,7 +298,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_container_instance')
         success, output = call_with_output(f"az container list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -302,7 +307,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_containerapp')
         success, output = call_with_output(f"az containerapp list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -311,7 +316,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_cosmosdb')
         success, output = call_with_output(f"az cosmosdb list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -320,7 +325,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_network_watcher')
         success, output = call_with_output(f"az network watcher list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -329,7 +334,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_container')
         success, output = call_with_output(f"az container list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -338,7 +343,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_app_gateway')
         success, output = call_with_output(f"az network application-gateway list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -347,7 +352,7 @@ class PingSafeAzureUnitAudit:
         print('getting data for count_load_balancers')
         success, output = call_with_output(f"az network lb list {self.subscription_flag} --output json")
         if not success:
-            raise Exception("Failed with error: ",output)
+            print("Failed with error: ",output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
