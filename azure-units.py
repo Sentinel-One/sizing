@@ -57,7 +57,7 @@ class PingSafeAzureUnitAudit:
             raise Exception(f"check azure subscription id/permissions subscription-id: {subscription}")
         
         with open(self.file_path, 'w') as f:
-            f.write("Resource Type, Unit Counted\n")
+            f.write("Resource Type, Unit Counted, Error\n")
 
     def add_result(self, k, v):
         with open(self.file_path, 'a') as f:
