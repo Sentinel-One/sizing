@@ -14,13 +14,13 @@ REGIONS = args.regions
 
 
 def aws_describe_regions(profile):
-    profile_flag = f"--profile {profile}" if profile else ''
+    profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
     output = subprocess.check_output(
-        f"aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json",
-        text=True, shell=True, stderr=subprocess.STDOUT
+        "aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json".format(profile_flag=profile_flag),
+        universal_newlines=True, shell=True, stderr=subprocess.STDOUT
     )
-    if f"The config profile ({profile}) could not be found" in output:
-        raise Exception(f"found invalid aws profile {profile}")
+    if "The config profile ({profile}) could not be found".format(profile=profile) in output:
+        raise Exception("found invalid aws profile {profile}".format(profile=profile))
     j = json.loads(output)
     all_regions_active = [region_object['RegionName'] for region_object in j['Regions']]
     if len(REGIONS) == 0:
@@ -38,8 +38,8 @@ def aws_describe_regions(profile):
 
 class PingSafeAWSUnitAudit:
     def __init__(self, profile):
-        self.file_path = f"aws-{profile}-units.csv" if profile else 'aws-units.csv'
-        self.profile_flag = f"--profile {profile}" if profile else ''
+        self.file_path = "aws-{profile}-units.csv".format(profile=profile) if profile else 'aws-units.csv'
+        self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
         self.total_resource_count = 0
         self.regions = aws_describe_regions(profile)
 
@@ -47,9 +47,24 @@ class PingSafeAWSUnitAudit:
             # Write Header
             f.write("Resource Type, Unit Counted\n")
 
+    def build_aws_cli_command(self, service, api, paginate=True, region=None, query=None):
+        region_flag = paginate_flag = query_flag = ""
+        if region:
+            region_flag = "--region {region}".format(region=region)
+        if query:
+            query_flag = "--query {query}".format(query=query)
+        if not paginate:
+            paginate_flag = "--no-paginate"
+        cmd = "aws {region_flag} {profile_flag} --output json {service} {api} {query_flag} {paginate_flag}".format(
+            region_flag=region_flag, profile_flag=self.profile_flag, service=service, api=api,
+            paginate_flag=paginate_flag, query_flag = query_flag
+        )
+        print(cmd)
+        return cmd
+
     def add_result(self, k, v):
         with open(self.file_path, 'a') as f:
-            f.write(f'{k}, {v}\n')
+            f.write('{k}, {v}\n'.format(k=k,v=v))
 
     def count_all(self):
         agv1_rest_api_count = 0
@@ -104,8 +119,12 @@ class PingSafeAWSUnitAudit:
     def count_rest_api(self, region):
         print('getting data for count_rest_api', region)
         output = subprocess.check_output(
-            f"aws --region {region} apigateway get-rest-apis --output json --no-paginate {self.profile_flag}",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            self.build_aws_cli_command(
+                service="apigateway",
+                api="get-rest-apis",
+                region=region
+            ),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -118,8 +137,13 @@ class PingSafeAWSUnitAudit:
     def count_cloudfront_distributions(self):
         print('getting data for count_cloudfront_distributions')
         output = subprocess.check_output(
-            f"aws {self.profile_flag} cloudfront list-distributions --query \"DistributionList.Items[].Id\" --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            self.build_aws_cli_command(
+                service="cloudfront",
+                api="list-distributions",
+                query="\"DistributionList.Items[].Id\"",
+                paginate=False
+            ),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -132,8 +156,13 @@ class PingSafeAWSUnitAudit:
     def count_elastic_ips(self):
         print('getting data for count_elastic_ips')
         output = subprocess.check_output(
-            f"aws {self.profile_flag} ec2 describe-addresses --query \"Addresses[].PublicIp\" --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # "aws {profile_flag} ec2 describe-addresses --query \"Addresses[].PublicIp\" --output json --no-paginate".format(profile_flag=self.profile_flag),
+            self.build_aws_cli_command(
+                service="ec2",
+                api="describe-addresses",
+                query="\"Addresses[].PublicIp\"",
+                paginate=False),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -145,8 +174,14 @@ class PingSafeAWSUnitAudit:
     def count_ec2_instances(self, region):
         print('getting data for count_ec2_instances', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # "aws --region {region} {profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate".format(region=region, profile_flag=self.profile_flag),
+            self.build_aws_cli_command(
+                service="ec2",
+                api="describe-instances",
+                paginate=False,
+                query="\"Reservations[].Instances\"",
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -158,8 +193,14 @@ class PingSafeAWSUnitAudit:
     def count_ecr_repositories(self, region):
         print('getting data for count_ecr_repositories', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} ecr describe-repositories --query \"repositories[].repositoryArn\" --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # "aws --region {region} {profile_flag} ecr describe-repositories --query \"repositories[].repositoryArn\" --output json --no-paginate".format(region=region,profile_flag=self.profile_flag)
+            self.build_aws_cli_command(
+                service="ecr",
+                api="describe-repositories",
+                query="\"repositories[].repositoryArn\"",
+                paginate=False,
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -172,8 +213,13 @@ class PingSafeAWSUnitAudit:
     def count_load_balancers_v1(self, region):
         print('getting data for count_load_balancers_v1', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} elb describe-load-balancers --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # "aws --region {region} {profile_flag} elb describe-load-balancers --output json --no-paginate".format(region=region,profile_flag=self.profile_flag),
+            self.build_aws_cli_command(
+                service="elb",
+                api="describe-load-balancers",
+                paginate=False,
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -186,8 +232,13 @@ class PingSafeAWSUnitAudit:
     def count_load_balancers_v2(self, region):
         print('getting data for count_load_balancers_v2', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} elbv2 describe-load-balancers --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # f"aws --region {region} {self.profile_flag} elbv2 describe-load-balancers --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="elbv2",
+                api="describe-load-balancers",
+                paginate=False,
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -199,8 +250,13 @@ class PingSafeAWSUnitAudit:
     def count_rds_db_instances(self, region):
         print('getting data for count_rds_db_instances', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} rds describe-db-instances --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # f"aws --region {region} {self.profile_flag} rds describe-db-instances --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="rds",
+                api="describe-db-instances",
+                paginate=False,
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         if j is None or len(j) == 0:
@@ -213,8 +269,12 @@ class PingSafeAWSUnitAudit:
     def count_s3_buckets(self):
         print('getting data for count_s3_buckets')
         output = subprocess.check_output(
-            f"aws {self.profile_flag} s3api list-buckets --query \"Buckets[].Name\" --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # f"aws {self.profile_flag} s3api list-buckets --query \"Buckets[].Name\" --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="s3api",
+                api="list-buckets",
+                paginate=False),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         c = len(j)
@@ -227,8 +287,13 @@ class PingSafeAWSUnitAudit:
         print('getting data for count_apis_v2', region)
         try:
             output = subprocess.check_output(
-                f"aws --region {region} {self.profile_flag} apigatewayv2 get-apis --output json --no-paginate",
-                text=True, shell=True, stderr=subprocess.STDOUT
+                # f"aws --region {region} {self.profile_flag} apigatewayv2 get-apis --output json --no-paginate",
+                self.build_aws_cli_command(
+                    service="apigatewayv2",
+                    api="get-apis",
+                    paginate=False,
+                    region=region),
+                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
             )
             j = json.loads(output)
             c = len(j.get("Items", []))
@@ -238,15 +303,20 @@ class PingSafeAWSUnitAudit:
             return c
         except subprocess.CalledProcessError as e:
             if "Member must satisfy regular expression pattern" in e.output:
-                print(f"[Warning] API call 'apigatewayv2' not supported in {region}")
+                print("[Warning] API call 'apigatewayv2' not supported in {region}".format(region=region))
             return 0
 
     # Region agnostic
     def count_redshift_clusters(self):
         print('getting data for count_redshift_clusters')
         output = subprocess.check_output(
-            f"aws {self.profile_flag} redshift describe-clusters --query \"Clusters[].ClusterIdentifier\" --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # f"aws {self.profile_flag} redshift describe-clusters --query \"Clusters[].ClusterIdentifier\" --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="redshift",
+                api="describe-clusters",
+                query="\"Clusters[].ClusterIdentifier\"",
+                paginate=False),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         c = len(j)
@@ -258,8 +328,13 @@ class PingSafeAWSUnitAudit:
     def count_eks_clusters(self, region):
         print('getting data for count_eks_clusters', region)
         output = subprocess.check_output(
-            f"aws --region {region} {self.profile_flag} eks list-clusters --output json --no-paginate",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            # f"aws --region {region} {self.profile_flag} eks list-clusters --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="eks",
+                api="list-clusters",
+                paginate=False,
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         c = len(j.get("clusters", []))
@@ -272,8 +347,14 @@ class PingSafeAWSUnitAudit:
         try:
             print('getting data for count_elastic_beanstalk_environments', region)
             output = subprocess.check_output(
-                f"aws --region {region} {self.profile_flag} elasticbeanstalk describe-environments --query \"Environments[].EnvironmentId\" --output json --no-paginate",
-                text=True, shell=True, stderr=subprocess.STDOUT
+                # f"aws --region {region} {self.profile_flag} elasticbeanstalk describe-environments --query \"Environments[].EnvironmentId\" --output json --no-paginate",
+                self.build_aws_cli_command(
+                    service="elasticbeanstalk",
+                    api="describe-environments",
+                    query="\"Environments[].EnvironmentId\"",
+                    paginate=False,
+                    region=region),
+                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
             )
             j = json.loads(output)
             c = len(j)
@@ -283,7 +364,7 @@ class PingSafeAWSUnitAudit:
             return c
         except subprocess.CalledProcessError as e:
             if "Could not connect to the endpoint URL" in e.output:
-                print(f"[Warning] API call 'elasticbeanstalk' not supported in {region}")
+                print("[Warning] API call 'elasticbeanstalk' not supported in {region}".format(region=region))
             return 0
 
 
