@@ -90,7 +90,6 @@ class PingSafeAWSUnitAudit:
         self.add_result("AWS Lambda Function", lambda_functions_count)
         self.add_result("AWS ECS Cluster", ecs_clusters_count)
 
-        print(self.total_resource_count)
         self.add_result('TOTAL', self.total_resource_count)
         print("results stored at", self.file_path)
 
