@@ -2,8 +2,7 @@ import subprocess
 import json
 import argparse
 
-# Usage python3 ./oci-units.py --args ""
-# compartments and profiles
+# Usage python3 ./oci-units.py --profiles profile_1 profile_2 profile_3 --compartments compartment_1 compartment_2 --args "--auth security_token"
 parser = argparse.ArgumentParser(prog="PingSafe OCI Unit Audit")
 
 parser.add_argument("--profiles", help="OCI profile(s) separated by space", nargs='+', default=[], required=False)
@@ -33,13 +32,10 @@ class PingSafeOCIUnitAudit:
         compute_instance_count = 0
         kubernetes_cluster_count = 0
 
-        compartments = COMPARTMENTS
-        if len(compartments) == 0:
-            compartments = self.get_compartments()
+        compartments = self.get_compartments()
 
-        for compartment in compartments:
-            print("Fetching resources of compartment", compartment.get("name"))
-            compartmentId = compartment.get("id")
+        for compartmentId, compartmentName in compartments.items():
+            print("Fetching resources of compartment", compartmentName)
             compute_instance_count += self.count_compute_instance(compartmentId)
             kubernetes_cluster_count += self.count_kubernetes_cluster(compartmentId)
 
@@ -49,14 +45,22 @@ class PingSafeOCIUnitAudit:
         print("results stored at", self.file_path)
 
     def get_compartments(self):
-        # return [{"id": "ocid1.tenancy.oc1..aaaaaaaa6um7s32pbjyc2he3cozuikezegv24i5ff6pjo5hq4jh4mkegkdiq"}]
         print("Fetching Compartments")
         output = subprocess.check_output(
             f"oci iam compartment list --all --include-root --compartment-id-in-subtree true --access-level ACCESSIBLE --lifecycle-state ACTIVE --output json {ADITIONAL_ARGS}",
                 text=True, shell=True
             )
         j = json.loads(output)
-        return j.get('data')
+        compartments = {}
+
+        for i in j.get('data'):
+            compartments[i.get("id")] = i.get("name")
+
+        # when COMPARTMENTS are passed manually, returning only mentioned comartmentIds with name
+        if len(COMPARTMENTS) != 0:
+            return {key: val for key, val in compartments.items() if key in COMPARTMENTS}
+
+        return compartments
 
     def count_compute_instance(self, compartmentId):
       print("Fetching count_compute_instance")
