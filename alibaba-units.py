@@ -2,7 +2,7 @@ import subprocess
 import json
 import argparse
 
-# Usage python3 ./aws-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
+# Usage python3 ./alibaba-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 
 parser = argparse.ArgumentParser(prog="PingSafe Alibaba Unit Audit")
 parser.add_argument("--profiles", help="Alibaba profile(s) separated by space", nargs='+', default=[], required=False)

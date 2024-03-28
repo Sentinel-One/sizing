@@ -2,7 +2,7 @@ import subprocess
 import json
 import argparse
 
-# Usage python3 ./digitalocean-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
+# Usage python3 ./digitalocean-units.py --contexts <context_1> <context_2> <context_3> <context_4>
 
 parser = argparse.ArgumentParser(prog="PingSafe Digital Ocean Unit Audit")
 parser.add_argument("--contexts", help="Digital Ocean CLI Contexts separated by space", nargs='+', default=[], required=False)
