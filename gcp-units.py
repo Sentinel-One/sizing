@@ -2,14 +2,13 @@ import argparse
 import json
 import subprocess
 
-# Usage python3 ./gcp-units.py --project_id <project_id>
+# Usage python3 ./gcp-units.py --projects <project_id_1> <project_id_2> <project_id_3>
 
 parser = argparse.ArgumentParser(prog="PingSafe GCP Unit Audit")
-parser.add_argument("--project_id", help="GCP Project ID", required=True)
+parser.add_argument("--projects", help="GCP Project ID(s) separated by space", nargs='+', default=[],required=True)
 args = parser.parse_args()
 
-PROJECT_ID = args.project_id
-
+PROJECTS = args.projects
 
 def gcloud_set_project(project_id):
     output = subprocess.check_output(
@@ -20,7 +19,6 @@ def gcloud_set_project(project_id):
     if f"WARNING: You do not appear to have access to project [{project_id}] or it does not exist." in output:
         return False
     return True
-
 
 def gcloud_components_check():
     output = subprocess.check_output(
@@ -43,7 +41,6 @@ def gcloud_components_check():
             return False
     return True
 
-
 def gcloud_list_services():
     output = subprocess.check_output(
         "gcloud services list --format json",
@@ -55,7 +52,6 @@ def gcloud_list_services():
             'name': service['config']['name'],
             'enabled': service['state'] == 'ENABLED'
         }
-
 
 class PingSafeGCPUnitAudit:
     def __init__(self, project_id):
@@ -209,4 +205,7 @@ GCP_CF_LOCATIONS = [
     'asia-northeast3'
 ]
 
-PingSafeGCPUnitAudit(PROJECT_ID).count_all()
+if __name__ == '__main__':
+    projects = PROJECTS if len(PROJECTS) > 0 else [None]
+    for projectId in projects:
+        PingSafeGCPUnitAudit(projectId).count_all()
