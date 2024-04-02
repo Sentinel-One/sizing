@@ -1,5 +1,5 @@
-Resource Type, Unit Counted, Error
-Azure Virtual Machine, 2, ""
-Azure Kubernetes Cluster (AKS), 4, ""
-Azure Container Repository, 1, ""
-Total Resource, 7, ""
+Resource Type, Unit Counted
+Azure Virtual Machine, 4 
+Azure Kubernetes Cluster (AKS), 4 
+Azure Container Repository, 1 
+Total Resource, 9 
