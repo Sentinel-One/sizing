@@ -12,13 +12,19 @@ args = parser.parse_args()
 PROFILES = args.profiles
 REGIONS = args.regions
 
-
 def aws_describe_regions(profile):
     profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
-    output = subprocess.check_output(
-        "aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json".format(profile_flag=profile_flag),
-        universal_newlines=True, shell=True, stderr=subprocess.STDOUT
-    )
+    try:
+        output = subprocess.check_output(
+            "aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json".format(profile_flag=profile_flag),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as e:
+        print('[Error] Error getting regions')
+        print("[Error] [Command]",e.cmd)
+        print("[Error] [Command-Output]",e.output)
+        return []
+
     if "The config profile ({profile}) could not be found".format(profile=profile) in output:
         raise Exception("found invalid aws profile {profile}".format(profile=profile))
     j = json.loads(output)
@@ -45,7 +51,7 @@ class PingSafeAWSUnitAudit:
 
         with open(self.file_path, 'w') as f:
             # Write Header
-            f.write("Resource Type, Unit Counted\n")
+            f.write("Resource Type, Unit Counted, Error Regions\n")
 
     def build_aws_cli_command(self, service, api, paginate=True, region=None, query=None):
         region_flag = paginate_flag = query_flag = ""
@@ -59,61 +65,57 @@ class PingSafeAWSUnitAudit:
             region_flag=region_flag, profile_flag=self.profile_flag, service=service, api=api,
             paginate_flag=paginate_flag, query_flag = query_flag
         )
-        print(cmd)
         return cmd
 
-    def add_result(self, k, v):
+    def add_result(self, k, v, e=""):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v}\n'.format(k=k,v=v))
+            f.write('{k}, {v}, {e}\n'.format(k=k,v=v,e=e))
 
     def count_all(self):
-        ec2_instances_count = 0
-        ecr_repositories_count = 0
-        eks_cluster_count = 0
-        lambda_functions_count = 0
-        ecs_clusters_count = 0
+        self.itrateOverRegions("AWS EC2 Instance", self.count_ec2_instances)
+        self.itrateOverRegions("AWS Container Repository", self.count_ecr_repositories)
+        self.itrateOverRegions("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters)
+        self.itrateOverRegions("AWS ECS Cluster", self.count_ecs_clusters)
+        self.itrateOverRegions("AWS Lambda Function", self.count_lambda_functions)
 
-        # Region Agnostic
-        # s3_bucket_count += self.count_s3_buckets()
+        if self.total_resource_count:
+            self.add_result('TOTAL', self.total_resource_count)
+            print("[Info] Results stored at", self.file_path)
 
-        # Region Specific
+    def itrateOverRegions(self, svcName, svcCb):
+        count = 0
+        error = ''
         for region in self.regions:
-            ec2_instances_count += self.count_ec2_instances(region)
-            ecr_repositories_count += self.count_ecr_repositories(region)
-            eks_cluster_count += self.count_eks_clusters(region)
-            lambda_functions_count += self.count_lambda_functions(region)
-            ecs_clusters_count += self.count_ecs_clusters(region)
+            try:
+                count += svcCb(region)
+            except subprocess.CalledProcessError as e:
+                print('[Error] Error getting ', svcName, region)
+                print("[Error] [Command]", e.cmd)
+                print("[Error] [Command-Output]", e.output)
+                error += f"{region}, "
 
-        self.add_result("AWS EC2 Instance", ec2_instances_count)
-        self.add_result("AWS Container Repository", ecr_repositories_count)
-        self.add_result("AWS Kubernetes Cluster (EKS)", eks_cluster_count)
-        self.add_result("AWS Lambda Function", lambda_functions_count)
-        self.add_result("AWS ECS Cluster", ecs_clusters_count)
-
-        self.add_result('TOTAL', self.total_resource_count)
-        print("results stored at", self.file_path)
+            print(f'[info] Fetched {svcName} - {region}')
+        if count or error != '':
+            self.total_resource_count += count
+            self.add_result(svcName, count, error)
 
     def count_ec2_instances(self, region):
-        print('getting data for count_ec2_instances', region)
-        output = subprocess.check_output(
-            # "aws --region {region} {profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate".format(region=region, profile_flag=self.profile_flag),
-            self.build_aws_cli_command(
-                service="ec2",
-                api="describe-instances",
-                paginate=False,
-                query="\"Reservations[].Instances\"",
-                region=region),
-            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
-        )
-        j = json.loads(output)
-        if j is None or len(j) == 0:
-            return 0
-        c = len(j)
-        self.total_resource_count += c
-        return c
+            output = subprocess.check_output(
+                # "aws --region {region} {profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate".format(region=region, profile_flag=self.profile_flag),
+                self.build_aws_cli_command(
+                    service="ec2",
+                    api="describe-instances",
+                    paginate=False,
+                    query="\"Reservations[].Instances\"",
+                    region=region),
+                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+            )
+            j = json.loads(output)
+            if j is None or len(j) == 0:
+                return 0
+            return len(j)
 
     def count_ecr_repositories(self, region):
-        print('getting data for count_ecr_repositories', region)
         output = subprocess.check_output(
             # "aws --region {region} {profile_flag} ecr describe-repositories --query \"repositories[].repositoryArn\" --output json --no-paginate".format(region=region,profile_flag=self.profile_flag)
             self.build_aws_cli_command(
@@ -127,12 +129,9 @@ class PingSafeAWSUnitAudit:
         j = json.loads(output)
         if j is None or len(j) == 0:
             return 0
-        c = len(j)
-        self.total_resource_count += c
-        return c
+        return len(j)
 
     def count_eks_clusters(self, region):
-        print('getting data for count_eks_clusters', region)
         output = subprocess.check_output(
             # f"aws --region {region} {self.profile_flag} eks list-clusters --output json --no-paginate",
             self.build_aws_cli_command(
@@ -146,11 +145,9 @@ class PingSafeAWSUnitAudit:
         c = len(j.get("clusters", []))
         if j is None or len(j) == 0:
             return 0
-        self.total_resource_count += c
         return c
 
     def count_lambda_functions(self, region):
-        print('getting data for count_lambda_function', region)
         output = subprocess.check_output(
             # f"aws --region {region} {self.profile_flag} lambda list-functions --query 'Functions[*].FunctionName' --output json --no-paginate",
             self.build_aws_cli_command(
@@ -164,11 +161,8 @@ class PingSafeAWSUnitAudit:
         j = json.loads(output)
         if j is None or len(j) == 0:
             return 0
-        c = len(j)
-        self.total_resource_count += c
-        return c
+        return len(j)
     def count_ecs_clusters(self, region):
-        print('getting data for count_ecs_cluster', region)
         output = subprocess.check_output(
             # f"aws --region {region} {self.profile_flag} ecs list-clusters --query 'clusterArns' --output json --no-paginate",
             self.build_aws_cli_command(
@@ -182,9 +176,7 @@ class PingSafeAWSUnitAudit:
         j = json.loads(output)
         if j is None or len(j) == 0:
             return 0
-        c = len(j)
-        self.total_resource_count += c
-        return c
+        return len(j)
 
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]

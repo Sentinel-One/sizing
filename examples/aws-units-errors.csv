@@ -1,0 +1,7 @@
+Resource Type, Unit Counted, Error Regions
+AWS EC2 Instance, 255, eu-north-1, eu-west-3, eu-west-1, ap-northeast-3, ap-northeast-2, sa-east-1, us-east-2, us-west-2, 
+AWS Container Repository, 43, eu-north-1, eu-west-3, eu-west-1, ap-northeast-3, ap-northeast-2, sa-east-1, us-east-2, us-west-2, 
+AWS Kubernetes Cluster (EKS), 35, eu-north-1, eu-west-3, eu-west-1, ap-northeast-3, ap-northeast-2, sa-east-1, us-east-2, us-west-2, 
+AWS ECS Cluster, 6, eu-north-1, eu-west-3, eu-west-1, ap-northeast-3, ap-northeast-2, sa-east-1, us-east-2, us-west-2, 
+AWS Lambda Function, 79, eu-north-1, eu-west-3, eu-west-1, ap-northeast-3, ap-northeast-2, sa-east-1, us-east-2, us-west-2, 
+TOTAL, 418, 

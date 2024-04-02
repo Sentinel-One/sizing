@@ -1,0 +1,7 @@
+Resource Type, Unit Counted, Error Regions
+AWS EC2 Instance, 18, 
+AWS Container Repository, 6, 
+AWS Kubernetes Cluster (EKS), 2, 
+AWS Lambda Function, 5, 
+AWS ECS Cluster, 1, 
+TOTAL, 32, None
