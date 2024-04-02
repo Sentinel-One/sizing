@@ -15,36 +15,39 @@ def gcloud_set_project(project_id):
         f"gcloud config set project {project_id}",
         text=True, shell=True, stderr=subprocess.STDOUT
     )
-    print(output)
+    print(f"[Info]: {output}")
     if f"WARNING: You do not appear to have access to project [{project_id}] or it does not exist." in output:
         return False
     return True
 
 def gcloud_components_check():
-    output = subprocess.check_output(
-        "gcloud --version",
-        text=True, shell=True
-    )
-    installed_components = [x.split(" ")[0] for x in list(filter(lambda x: len(x.strip()) > 0, output.split("\n")))]
-    requirements = {
-        "alpha": False,
-        "bq": False,
-        "gsutil": False
-    }
-    for component in installed_components:
-        if requirements.get(component, None) is not None:
-            requirements[component] = True
-    for component in requirements:
-        if not requirements[component]:
-            print("missing component:", component)
-            print("required gcloud components:", "alpha", "bq", "gsutil")
-            return False
-    return True
+    try:
+        output = subprocess.check_output(
+            "gcloud --version",
+            text=True, shell=True, stderr=subprocess.STDOUT
+        )
+        installed_components = [x.split(" ")[0] for x in list(filter(lambda x: len(x.strip()) > 0, output.split("\n")))]
+        requirements = {
+            "alpha": False,
+            "bq": False,
+            "gsutil": False
+        }
+        for component in installed_components:
+            if requirements.get(component, None) is not None:
+                requirements[component] = True
+        for component in requirements:
+            if not requirements[component]:
+                print("[Error] missing component:", component)
+                print("[Error] required gcloud components:", "alpha", "bq", "gsutil")
+                return False
+        return True
+    except:
+        return False
 
 def gcloud_list_services():
     output = subprocess.check_output(
         "gcloud services list --format json",
-        text=True, shell=True
+        text=True, shell=True, stderr=subprocess.STDOUT
     )
     services = json.loads(output)
     for service in services:
@@ -62,16 +65,16 @@ class PingSafeGCPUnitAudit:
 
         if not gcloud_set_project(project_id):
             raise Exception("check gcp project id/permissions")
-        print("successfully set gcloud project id:", project_id)
+        print("[Info] successfully set gcloud project id:", project_id)
 
         if not gcloud_components_check():
             raise Exception("check installed components")
-        print("found all required cli components")
+        print("[Info] found all required cli components")
 
         for service in gcloud_list_services():
             if service['enabled']:
                 self.existing_permissions[service['name']] = True
-        print("fetched all existing permissions on account")
+        print("[Info] fetched all existing permissions on account")
 
         with open(self.file_path, 'w') as f:
             # Write Header
@@ -80,7 +83,7 @@ class PingSafeGCPUnitAudit:
     def is_api_enabled(self, apis):
         for api in apis:
             if not self.existing_permissions.get(api, False):
-                print(f"service-api {api} is disabled")
+                print(f"[Info] service-api {api} is disabled")
                 return False
         return True
 
@@ -89,58 +92,68 @@ class PingSafeGCPUnitAudit:
             f.write(f'{k}, {v}\n')
 
     def count_all(self):
-        self.add_result("GCP Compute Instance", self.count_compute_instances())
-        self.add_result("GCP Kubernetes Cluster (GKE)", self.count_kubernetes_clusters())
-        self.add_result("GCP Cloud Function", self.count_cloud_functions())
-        self.add_result("GCP Cloud Run", self.count_cloud_run())
-        self.add_result("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker())
-        self.add_result("GCP Container Repository", self.count_container_repository())
+        self.count("GCP Compute Instance", self.count_compute_instances)
+        self.count("GCP Kubernetes Cluster (GKE)", self.count_kubernetes_clusters)
+        self.count("GCP Cloud Function", self.count_cloud_functions)
+        self.count("GCP Cloud Run", self.count_cloud_run)
+        # TODO: Error while decoding json
+        self.count("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker)
+        self.count("GCP Container Repository", self.count_container_repository)
 
         self.add_result('TOTAL', self.total_resource_count)
-        print("results stored at", self.file_path)
+        print("[Info] results stored at", self.file_path)
+
+    def count(self, svcName, svcCb):
+        try:
+            count = svcCb()
+            if count:
+                self.add_result(svcName, count)
+            print('[Info] Fetched ', svcName)
+        except subprocess.CalledProcessError as e:
+            print('[Error] Error getting ', svcName)
+            print("[Error] [Command]", e.cmd)
+            print("[Error] [Command-Output]", e.output)
+            self.add_result(svcName, "Error")
 
     def count_compute_instances(self):
-        print('getting data for count_compute_instances')
         if not self.is_api_enabled(["compute.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             "gcloud compute instances list --format json",
-            text=True, shell=True
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
     def count_kubernetes_clusters(self):
-        print('getting data for count_kubernetes_clusters')
         if not self.is_api_enabled(["container.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             "gcloud container clusters list --format json",
-            text=True, shell=True
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
     def count_cloud_functions(self):
-        print('getting data for count_cloud_functions')
         if not self.is_api_enabled(["cloudfunctions.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             f"gcloud functions list --regions={','.join(GCP_CF_LOCATIONS)} --format json",
-            text=True, shell=True
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
+
     def count_cloud_run(self):
-        print('getting data for count_cloud_run')
         if not self.is_api_enabled(["run.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             f"gcloud run services list --format json",
-            text=True, shell=True
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
 
@@ -148,24 +161,23 @@ class PingSafeGCPUnitAudit:
         return len(j)
 
     def count_artifact_repository_docker(self):
-        print('getting data for count_artifact_repository_docker')
         if not self.is_api_enabled(["artifactregistry.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             f"gcloud artifacts repositories list --filter=\"format=docker\" --format json",
-            text=True, shell=True
+            universal_newlines=True, text=True, shell=True, stderr=subprocess.STDOUT
         )
+        print(output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
     def count_container_repository(self):
-        print('getting data for count_container_repository')
         if not self.is_api_enabled(["storage-api.googleapis.com"]):
             return 0
         output = subprocess.check_output(
             f"gcloud container images list --format json",
-            text=True, shell=True
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         self.total_resource_count += len(j)

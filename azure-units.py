@@ -75,11 +75,13 @@ class PingSafeAzureUnitAudit:
         self.count("Azure Container Repository", self.count_container_repository)
 
         self.add_result("Total Resource", self.total_resource_count)
-        print("Results stored at", self.file_path)
+        print("[Info] Results stored at", self.file_path)
 
     def count(self, svcName, svcCb):
         try:
-            self.add_result(svcName, svcCb())
+            count = svcCb()
+            if count:
+                self.add_result(svcName, count)
             print(f"[Info] Fetched {svcName}")
         except subprocess.CalledProcessError as e:
             print('[Error] Error getting ', svcName)

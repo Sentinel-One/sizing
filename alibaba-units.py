@@ -28,12 +28,12 @@ def alibaba_ecs_get_all_regions(profileFlag):
         return all_regions_active
 
     # if only some regions to be whitelisted
-    print('found whitelisted regions', REGIONS)
+    print('[Info] Found whitelisted regions', REGIONS)
     regions_to_run = []
     for region in all_regions_active:
         if region in REGIONS:
             regions_to_run.append(region)
-    print("valid whitelisted regions", regions_to_run)
+    print("[Info] Valid whitelisted regions", regions_to_run)
     return regions_to_run
 
 class PingSafeAlibabaUnitAudit:
@@ -45,38 +45,44 @@ class PingSafeAlibabaUnitAudit:
 
         with open(self.file_path, 'w') as f:
             # Write Header
-            f.write("Resource Type, Unit Counted\n")
+            f.write("Resource Type, Unit Counted, Error Regions\n")
 
-
-    def add_result(self, k, v):
+    def add_result(self, k, v, e=''):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v}\n'.format(k=k,v=v))
+            f.write('{k}, {v} {e}\n'.format(k=k,v=v,e=e))
 
     def count_all(self):
-        ecs_instances_count = 0
+        self.count("Alibaba ECS Instance", self.count_ecs_instances)
 
-        # Region Specific
-        for region in self.regions:
-            ecs_instances_count += self.count_ecs_instances(region)
-
-        self.add_result("Alibaba ECS Instance", ecs_instances_count)
         self.add_result('TOTAL', self.total_resource_count)
         print("results stored at", self.file_path)
 
+    def count(self, svcName, svcCb):
+        count = 0
+        error = ''
+        for region in self.regions:
+            try:
+                count += svcCb(region)
+            except subprocess.CalledProcessError as e:
+                print('[Error] Error getting ', svcName, region)
+                print("[Error] [Command]", e.cmd)
+                print("[Error] [Command-Output]", e.output)
+                error += f"{region}, "
+
+            print(f'[info] Fetched {svcName} - {region}')
+        if count or error != '':
+            self.total_resource_count += count
+            self.add_result(svcName, count, error)
+
     def count_ecs_instances(self, region):
-        print('getting data for count_ecr_instances', region)
         output = subprocess.check_output(
           f"aliyun ecs DescribeInstances --RegionId {region} {self.profile_flag}",
           text=True, shell=True
         )
-
         j = json.loads(output)
         if j is None:
             return 0
-
-        c = len(j)
-        self.total_resource_count += c
-        return c
+        return len(j)
 
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]

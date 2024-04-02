@@ -24,10 +24,22 @@ class PingSafeDigitalOceanUnitAudit:
             f.write('{k}, {v}\n'.format(k=k,v=v))
 
     def count_all(self):
-        self.add_result("Digital Ocean Droplets", self.count_droplets())
+        self.count("Digital Ocean Droplets", self.count_droplets)
+
         self.add_result('TOTAL', self.total_resource_count)
 
-        print("results stored at", self.file_path)
+        print("[Info] results stored at", self.file_path)
+    def count(self, svcName, svcCb):
+        try:
+            count = svcCb()
+            if count:
+                self.add_result(svcName, count)
+            print('[Info] Fetched ', svcName)
+        except subprocess.CalledProcessError as e:
+            print('[Error] Error getting ', svcName)
+            print("[Error] [Command]", e.cmd)
+            print("[Error] [Command-Output]", e.output)
+            self.add_result(svcName, "Error")
 
     def count_droplets(self):
       output = subprocess.check_output(

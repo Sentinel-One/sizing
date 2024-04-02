@@ -78,9 +78,8 @@ class PingSafeAWSUnitAudit:
         self.itrateOverRegions("AWS ECS Cluster", self.count_ecs_clusters)
         self.itrateOverRegions("AWS Lambda Function", self.count_lambda_functions)
 
-        if self.total_resource_count:
-            self.add_result('TOTAL', self.total_resource_count)
-            print("[Info] Results stored at", self.file_path)
+        self.add_result('TOTAL', self.total_resource_count)
+        print("[Info] Results stored at", self.file_path)
 
     def itrateOverRegions(self, svcName, svcCb):
         count = 0
