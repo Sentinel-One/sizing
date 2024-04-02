@@ -144,16 +144,8 @@ class PingSafeGCPUnitAudit:
         )
         j = json.loads(output)
 
-        # TODO remove latter if needed
-        output2 = subprocess.check_output(
-            f"gcloud run jobs list --format json",
-            text=True, shell=True
-        )
-        i = json.loads(output2)
-        self.total_resource_count += len(i)
-
         self.total_resource_count += len(j)
-        return len(j) + len(i)
+        return len(j)
 
     def count_artifact_repository_docker(self):
         print('getting data for count_artifact_repository_docker')
