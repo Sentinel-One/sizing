@@ -2,6 +2,7 @@ import subprocess
 import json
 import argparse
 # Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
+# Permissions: Management grp reader access or individual subscription reader access
 
 parser = argparse.ArgumentParser(prog="PingSafe Azure Unit Audit")
 parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[], required=True)
@@ -31,21 +32,19 @@ def check_extenstion(name):
 
     return success
 
-def azure_show_subscription(subscription):
-    success = False
+def azure_show_subscription(subscription_id):
     try:
-        output = call_with_output(f"az account subscription show --subscription-id {subscription} --output json")
-        success = True
+        output = call_with_output(f"az account subscription list --output json --only-show-errors")
+        for subscription in json.loads(output):
+            if subscription_id == subscription["subscriptionId"]:
+                return True
+
     except subprocess.CalledProcessError as e:
-        print('[Error] Error checking subscription ', subscription)
+        print('[Error] Error checking subscription ', subscription_id)
         print("[Error] [Command]", e.cmd)
-        print("[Error] [Command-Output]", e.output)
+        print("[Error] [Command-Output]", e.output)    
 
-        output = e.output
-
-    if f"SubscriptionNotFound" in output:
-        return False
-    return success
+    return False
 
 class PingSafeAzureUnitAudit:
     def __init__(self, subscription):
@@ -90,21 +89,21 @@ class PingSafeAzureUnitAudit:
             self.add_result(svcName, "Error: Check Terminal logs")
 
     def count_vm_instances(self):
-        output = call_with_output(f"az vm list {self.subscription_flag} --output json")
+        output = call_with_output(f"az vm list {self.subscription_flag} --output json --only-show-errors")
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
     def count_kubernetes_clusters(self):
-        output = call_with_output(f"az aks list {self.subscription_flag} --output json")
+        output = call_with_output(f"az aks list {self.subscription_flag} --output json --only-show-errors")
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
 
     def count_container_repository(self):
-        output = call_with_output(f"az acr list {self.subscription_flag} --output json")
+        output = call_with_output(f"az acr list {self.subscription_flag} --output json --only-show-errors")
         registries = json.loads(output)
-        total_repositories = 0;
+        total_repositories = 0
 
         for registry in registries:
             registryName = registry.get("name")
@@ -118,4 +117,7 @@ class PingSafeAzureUnitAudit:
 if __name__ == '__main__':
     subscriptions = SUBSCRIPTIONS if len(SUBSCRIPTIONS) > 0 else [None]
     for s in subscriptions:
-        PingSafeAzureUnitAudit(s).count_all()
+        try:
+            PingSafeAzureUnitAudit(s).count_all()
+        except Exception as e:
+            print(e)
