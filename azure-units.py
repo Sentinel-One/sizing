@@ -2,7 +2,6 @@ import subprocess
 import json
 import argparse
 # Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
-# Permissions: Management grp reader access or individual subscription reader access
 
 parser = argparse.ArgumentParser(prog="PingSafe Azure Unit Audit")
 parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[], required=True)
