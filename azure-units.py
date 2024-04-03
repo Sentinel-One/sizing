@@ -20,7 +20,7 @@ def check_extenstion(name):
         output = call_with_output(f"az extension show -n {name}")
         success = True
     except subprocess.CalledProcessError as e:
-        print('[Error] Error checking extension ', name)
+        print('[Error] Error checking extension', name)
         print("[Error] [Command]", e.cmd)
         print("[Error] [Command-Output]", e.output)
 
@@ -31,7 +31,7 @@ def check_extenstion(name):
 
     return success
 
-def azure_show_subscription(subscription_id):
+def check_azure_subscription(subscription_id):
     try:
         output = call_with_output(f"az account subscription list --output json --only-show-errors")
         for subscription in json.loads(output):
@@ -55,10 +55,10 @@ class PingSafeAzureUnitAudit:
         extensions= () # example "containerapp",
         for extension in extensions:
             if not check_extenstion(extension):
-                raise Exception(f"[Error] Extension not installed: {extension}. Install using az extension add -n {extension}")
+                raise Exception(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
 
-        if not azure_show_subscription(subscription):
-            raise Exception(f"[Error] check azure subscription id/permissions subscription-id: {subscription}")
+        if not check_azure_subscription(subscription):
+            raise Exception(f"Check azure subscription id/permissions subscription-id: {subscription}")
 
         with open(self.file_path, 'w') as f:
             f.write("Resource Type, Unit Counted\n")
@@ -86,6 +86,9 @@ class PingSafeAzureUnitAudit:
             print("[Error] [Command]", e.cmd)
             print("[Error] [Command-Output]", e.output)
             self.add_result(svcName, "Error: Check Terminal logs")
+        except json.decoder.JSONDecodeError as e:
+            print("[Error] parsing data from Cloud Provider\n", e)
+            self.add_result(svcName, "JSON Error")
 
     def count_vm_instances(self):
         output = call_with_output(f"az vm list {self.subscription_flag} --output json --only-show-errors")
@@ -119,4 +122,4 @@ if __name__ == '__main__':
         try:
             PingSafeAzureUnitAudit(s).count_all()
         except Exception as e:
-            print(e)
+            print("[Error]",e)

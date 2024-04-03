@@ -68,6 +68,9 @@ class PingSafeAlibabaUnitAudit:
                 print("[Error] [Command]", e.cmd)
                 print("[Error] [Command-Output]", e.output)
                 error += f"{region}, "
+            except json.decoder.JSONDecodeError as e:
+                print("[Error] parsing data from Cloud Provider\n", e)
+                error += f"{region} (Json Error), "
 
             print(f'[info] Fetched {svcName} - {region}')
         if count or error != '':

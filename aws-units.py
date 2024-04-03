@@ -72,16 +72,16 @@ class PingSafeAWSUnitAudit:
             f.write('{k}, {v}, {e}\n'.format(k=k,v=v,e=e))
 
     def count_all(self):
-        self.itrateOverRegions("AWS EC2 Instance", self.count_ec2_instances)
-        self.itrateOverRegions("AWS Container Repository", self.count_ecr_repositories)
-        self.itrateOverRegions("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters)
-        self.itrateOverRegions("AWS ECS Cluster", self.count_ecs_clusters)
-        self.itrateOverRegions("AWS Lambda Function", self.count_lambda_functions)
+        self.count("AWS EC2 Instance", self.count_ec2_instances)
+        self.count("AWS Container Repository", self.count_ecr_repositories)
+        self.count("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters)
+        self.count("AWS ECS Cluster", self.count_ecs_clusters)
+        self.count("AWS Lambda Function", self.count_lambda_functions)
 
         self.add_result('TOTAL', self.total_resource_count)
         print("[Info] Results stored at", self.file_path)
 
-    def itrateOverRegions(self, svcName, svcCb):
+    def count(self, svcName, svcCb):
         count = 0
         error = ''
         for region in self.regions:
@@ -92,7 +92,9 @@ class PingSafeAWSUnitAudit:
                 print("[Error] [Command]", e.cmd)
                 print("[Error] [Command-Output]", e.output)
                 error += f"{region}, "
-
+            except json.decoder.JSONDecodeError as e:
+                print("[Error] parsing data from Cloud Provider\n \n", e)
+                error += f"{region} (JSON), "
             print(f'[info] Fetched {svcName} - {region}')
         if count or error != '':
             self.total_resource_count += count

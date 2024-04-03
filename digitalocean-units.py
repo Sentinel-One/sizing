@@ -25,10 +25,9 @@ class PingSafeDigitalOceanUnitAudit:
 
     def count_all(self):
         self.count("Digital Ocean Droplets", self.count_droplets)
-
         self.add_result('TOTAL', self.total_resource_count)
-
         print("[Info] results stored at", self.file_path)
+        
     def count(self, svcName, svcCb):
         try:
             count = svcCb()
@@ -40,6 +39,9 @@ class PingSafeDigitalOceanUnitAudit:
             print("[Error] [Command]", e.cmd)
             print("[Error] [Command-Output]", e.output)
             self.add_result(svcName, "Error")
+        except json.decoder.JSONDecodeError as e:
+            print("[Error] parsing data from Cloud Provider\n", e)
+            self.add_result(svcName, "JSON Error")
 
     def count_droplets(self):
       output = subprocess.check_output(

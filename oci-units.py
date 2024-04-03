@@ -47,6 +47,9 @@ class PingSafeOCIUnitAudit:
                 print("[Error] [Command]", e.cmd)
                 print("[Error] [Command-Output]", e.output)
                 error += f"{compartmentId}, "
+            except json.decoder.JSONDecodeError as e:
+                print("[Error] parsing data from Cloud Provider\n", e)
+                error += f"{compartmentId} (JSON), "
             print(f'[Info] Fetched {compartmentName} - {svcName}')
         self.add_result(svcName, count, error)
 

@@ -64,11 +64,11 @@ class PingSafeGCPUnitAudit:
         self.total_resource_count = 0
 
         if not gcloud_set_project(project_id):
-            raise Exception("check gcp project id/permissions")
+            raise Exception("Check gcp project id/permissions")
         print("[Info] successfully set gcloud project id:", project_id)
 
         if not gcloud_components_check():
-            raise Exception("check installed components")
+            raise Exception("Check installed components")
         print("[Info] found all required cli components")
 
         for service in gcloud_list_services():
@@ -113,6 +113,9 @@ class PingSafeGCPUnitAudit:
             print('[Error] Error getting ', svcName)
             print("[Error] [Command]", e.cmd)
             print("[Error] [Command-Output]", e.output)
+            self.add_result(svcName, "Error")
+        except json.decoder.JSONDecodeError as e:
+            print("[Error] parsing data from Cloud Provider\n", e)
             self.add_result(svcName, "Error")
 
     def count_compute_instances(self):
@@ -212,4 +215,7 @@ GCP_CF_LOCATIONS = [
 if __name__ == '__main__':
     projects = PROJECTS if len(PROJECTS) > 0 else [None]
     for projectId in projects:
-        PingSafeGCPUnitAudit(projectId).count_all()
+        try:
+            PingSafeGCPUnitAudit(projectId).count_all()
+        except Exception as e:
+            print("[Error]", e)
