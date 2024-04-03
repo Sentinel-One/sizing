@@ -1,6 +1,7 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
+
 # Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
 
 parser = argparse.ArgumentParser(prog="PingSafe Azure Unit Audit")

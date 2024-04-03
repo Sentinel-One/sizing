@@ -1,6 +1,6 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
 
 # Usage python3 ./digitalocean-units.py --contexts <context_1> <context_2> <context_3> <context_4>
 

@@ -96,7 +96,6 @@ class PingSafeGCPUnitAudit:
         self.count("GCP Kubernetes Cluster (GKE)", self.count_kubernetes_clusters)
         self.count("GCP Cloud Function", self.count_cloud_functions)
         self.count("GCP Cloud Run", self.count_cloud_run)
-        # TODO: Error while decoding json
         self.count("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker)
         self.count("GCP Container Repository", self.count_container_repository)
 
@@ -112,7 +111,7 @@ class PingSafeGCPUnitAudit:
         except subprocess.CalledProcessError as e:
             print('[Error] Error getting ', svcName)
             print("[Error] [Command]", e.cmd)
-            print("[Error] [Command-Output]", e.output)
+            # print("[Error] [Command-Output]", e.output)
             self.add_result(svcName, "Error")
         except json.decoder.JSONDecodeError as e:
             print("[Error] parsing data from Cloud Provider\n", e)
@@ -123,7 +122,7 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             "gcloud compute instances list --format json",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            text=True, shell=True, 
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
@@ -134,7 +133,7 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             "gcloud container clusters list --format json",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            text=True, shell=True, 
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
@@ -145,7 +144,7 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud functions list --regions={','.join(GCP_CF_LOCATIONS)} --format json",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            text=True, shell=True, 
         )
         j = json.loads(output)
         self.total_resource_count += len(j)
@@ -156,7 +155,7 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud run services list --format json",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            text=True, shell=True, 
         )
         j = json.loads(output)
 
@@ -168,9 +167,8 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud artifacts repositories list --filter=\"format=docker\" --format json",
-            universal_newlines=True, text=True, shell=True, stderr=subprocess.STDOUT
+            universal_newlines=True, text=True, shell=True,
         )
-        print(output)
         j = json.loads(output)
         self.total_resource_count += len(j)
         return len(j)
@@ -180,7 +178,7 @@ class PingSafeGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud container images list --format json",
-            text=True, shell=True, stderr=subprocess.STDOUT
+            text=True, shell=True
         )
         j = json.loads(output)
         self.total_resource_count += len(j)

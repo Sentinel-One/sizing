@@ -1,6 +1,6 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
 
 # Usage python3 ./alibaba-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 

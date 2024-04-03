@@ -1,6 +1,6 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
 
 # Usage python3 ./aws-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 
@@ -12,17 +12,19 @@ args = parser.parse_args()
 PROFILES = args.profiles
 REGIONS = args.regions
 
+
 def aws_describe_regions(profile):
     profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
     try:
         output = subprocess.check_output(
-            "aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json".format(profile_flag=profile_flag),
+            "aws {profile_flag} ec2 describe-regions --filters \"Name=opt-in-status,Values=opted-in,opt-in-not-required\" --output json".format(
+                profile_flag=profile_flag),
             universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
     except subprocess.CalledProcessError as e:
         print('[Error] Error getting regions')
-        print("[Error] [Command]",e.cmd)
-        print("[Error] [Command-Output]",e.output)
+        print("[Error] [Command]", e.cmd)
+        print("[Error] [Command-Output]", e.output)
         return []
 
     if "The config profile ({profile}) could not be found".format(profile=profile) in output:
@@ -63,13 +65,13 @@ class PingSafeAWSUnitAudit:
             paginate_flag = "--no-paginate"
         cmd = "aws {region_flag} {profile_flag} --output json {service} {api} {query_flag} {paginate_flag}".format(
             region_flag=region_flag, profile_flag=self.profile_flag, service=service, api=api,
-            paginate_flag=paginate_flag, query_flag = query_flag
+            paginate_flag=paginate_flag, query_flag=query_flag
         )
         return cmd
 
     def add_result(self, k, v, e=""):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v}, {e}\n'.format(k=k,v=v,e=e))
+            f.write('{k}, {v}, {e}\n'.format(k=k, v=v, e=e))
 
     def count_all(self):
         self.count("AWS EC2 Instance", self.count_ec2_instances)
@@ -101,20 +103,20 @@ class PingSafeAWSUnitAudit:
             self.add_result(svcName, count, error)
 
     def count_ec2_instances(self, region):
-            output = subprocess.check_output(
-                # "aws --region {region} {profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate".format(region=region, profile_flag=self.profile_flag),
-                self.build_aws_cli_command(
-                    service="ec2",
-                    api="describe-instances",
-                    paginate=False,
-                    query="\"Reservations[].Instances\"",
-                    region=region),
-                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
-            )
-            j = json.loads(output)
-            if j is None or len(j) == 0:
-                return 0
-            return len(j)
+        output = subprocess.check_output(
+            # "aws --region {region} {profile_flag} --query \"Reservations[].Instances\" ec2 describe-instances --output json --no-paginate".format(region=region, profile_flag=self.profile_flag),
+            self.build_aws_cli_command(
+                service="ec2",
+                api="describe-instances",
+                paginate=False,
+                query="\"Reservations[].Instances\"",
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+        )
+        j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
+        return len(j)
 
     def count_ecr_repositories(self, region):
         output = subprocess.check_output(
@@ -163,6 +165,7 @@ class PingSafeAWSUnitAudit:
         if j is None or len(j) == 0:
             return 0
         return len(j)
+
     def count_ecs_clusters(self, region):
         output = subprocess.check_output(
             # f"aws --region {region} {self.profile_flag} ecs list-clusters --query 'clusterArns' --output json --no-paginate",
@@ -178,6 +181,7 @@ class PingSafeAWSUnitAudit:
         if j is None or len(j) == 0:
             return 0
         return len(j)
+
 
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]

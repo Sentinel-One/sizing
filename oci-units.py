@@ -1,6 +1,6 @@
-import subprocess
-import json
 import argparse
+import json
+import subprocess
 
 # Usage python3 ./oci-units.py --profiles profile_1 profile_2 profile_3 --compartments compartment_1 compartment_2 --args "--auth security_token"
 parser = argparse.ArgumentParser(prog="PingSafe OCI Unit Audit")
