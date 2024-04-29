@@ -4,13 +4,13 @@ import subprocess
 
 # Usage python3 ./digitalocean-units.py --contexts <context_1> <context_2> <context_3> <context_4>
 
-parser = argparse.ArgumentParser(prog="PingSafe Digital Ocean Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS Digital Ocean Unit Audit")
 parser.add_argument("--contexts", help="Digital Ocean CLI Contexts separated by space", nargs='+', default=[], required=False)
 args = parser.parse_args()
 
 CONTEXTS = args.contexts
 
-class PingSafeDigitalOceanUnitAudit:
+class SentinelOneCNSDigitalOceanUnitAudit:
     def __init__(self, context):
         self.file_path = "digitalocean-{context}-units.csv".format(context=context) if context else 'digitalocean-units.csv'
         self.context_flag = "--context {context}".format(context=context) if context else ''
@@ -55,4 +55,4 @@ class PingSafeDigitalOceanUnitAudit:
 if __name__ == '__main__':
     contexts = CONTEXTS if len(CONTEXTS) > 0 else [None]
     for context in contexts:
-        PingSafeDigitalOceanUnitAudit(context).count_all()
+        SentinelOneCNSDigitalOceanUnitAudit(context).count_all()

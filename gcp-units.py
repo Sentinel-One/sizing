@@ -4,7 +4,7 @@ import subprocess
 
 # Usage python3 ./gcp-units.py --projects <project_id_1> <project_id_2> <project_id_3>
 
-parser = argparse.ArgumentParser(prog="PingSafe GCP Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS GCP Unit Audit")
 parser.add_argument("--projects", help="GCP Project ID(s) separated by space", nargs='+', default=[],required=True)
 args = parser.parse_args()
 
@@ -56,7 +56,7 @@ def gcloud_list_services():
             'enabled': service['state'] == 'ENABLED'
         }
 
-class PingSafeGCPUnitAudit:
+class SentinelOneCNSGCPUnitAudit:
     def __init__(self, project_id):
         self.existing_permissions = {}
         self.project_id = project_id
@@ -214,6 +214,6 @@ if __name__ == '__main__':
     projects = PROJECTS if len(PROJECTS) > 0 else [None]
     for projectId in projects:
         try:
-            PingSafeGCPUnitAudit(projectId).count_all()
+            SentinelOneCNSGCPUnitAudit(projectId).count_all()
         except Exception as e:
             print("[Error]", e)

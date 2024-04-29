@@ -1,8 +1,0 @@
-Resource Type, Unit Counted
-GCP Compute Instance, 7
-GCP Kubernetes Cluster (GKE), 1
-GCP Cloud Function, 3
-GCP Cloud Run, 1
-GCP Artifact Repository (only docker repositories), 10
-GCP Container Repository, 2
-TOTAL, 24

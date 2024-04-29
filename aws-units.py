@@ -4,7 +4,7 @@ import subprocess
 
 # Usage python3 ./aws-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 
-parser = argparse.ArgumentParser(prog="PingSafe AWS Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS AWS Unit Audit")
 parser.add_argument("--profiles", help="AWS profile(s) separated by space", nargs='+', default=[], required=False)
 parser.add_argument("--regions", help="Regions to run script for", nargs='+', default=[], required=False)
 args = parser.parse_args()
@@ -44,7 +44,7 @@ def aws_describe_regions(profile):
     return regions_to_run
 
 
-class PingSafeAWSUnitAudit:
+class SentinelOneCNSAWSUnitAudit:
     def __init__(self, profile):
         self.file_path = "aws-{profile}-units.csv".format(profile=profile) if profile else 'aws-units.csv'
         self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
@@ -186,4 +186,4 @@ class PingSafeAWSUnitAudit:
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]
     for p in profiles:
-        PingSafeAWSUnitAudit(p).count_all()
+        SentinelOneCNSAWSUnitAudit(p).count_all()

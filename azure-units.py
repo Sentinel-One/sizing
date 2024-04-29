@@ -4,7 +4,7 @@ import subprocess
 
 # Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
 
-parser = argparse.ArgumentParser(prog="PingSafe Azure Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS Azure Unit Audit")
 parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[], required=True)
 args = parser.parse_args()
 
@@ -46,7 +46,7 @@ def check_azure_subscription(subscription_id):
 
     return False
 
-class PingSafeAzureUnitAudit:
+class SentinelOneCNSAzureUnitAudit:
     def __init__(self, subscription):
         self.file_path = f"azure-{subscription}-units.csv" if subscription else 'azure-units.csv'
         self.subscription_flag = f'--subscription "{subscription}"'.format(subscription=subscription) if subscription else ''
@@ -121,6 +121,6 @@ if __name__ == '__main__':
     subscriptions = SUBSCRIPTIONS if len(SUBSCRIPTIONS) > 0 else [None]
     for s in subscriptions:
         try:
-            PingSafeAzureUnitAudit(s).count_all()
+            SentinelOneCNSAzureUnitAudit(s).count_all()
         except Exception as e:
             print("[Error]",e)

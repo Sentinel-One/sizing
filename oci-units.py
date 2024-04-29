@@ -3,7 +3,7 @@ import json
 import subprocess
 
 # Usage python3 ./oci-units.py --profiles profile_1 profile_2 profile_3 --compartments compartment_1 compartment_2 --args "--auth security_token"
-parser = argparse.ArgumentParser(prog="PingSafe OCI Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS OCI Unit Audit")
 
 parser.add_argument("--profiles", help="OCI profile(s) separated by space", nargs='+', default=[], required=False)
 parser.add_argument("--compartments", help="Compartments to run script for", nargs='+', default=[], required=False)
@@ -15,7 +15,7 @@ ADITIONAL_ARGS = " ".join(args.args)
 PROFILES = args.profiles
 COMPARTMENTS = args.compartments
 
-class PingSafeOCIUnitAudit:
+class SentinelOneCNSOCIUnitAudit:
     def __init__(self, profile):
         self.file_path = "oci-{profile}-units.csv".format(profile=profile) if profile else 'oci-units.csv'
         self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
@@ -102,4 +102,4 @@ class PingSafeOCIUnitAudit:
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]
     for p in profiles:
-        PingSafeOCIUnitAudit(p).count_all()
+        SentinelOneCNSOCIUnitAudit(p).count_all()
