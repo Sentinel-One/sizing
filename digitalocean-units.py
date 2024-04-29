@@ -15,24 +15,29 @@ class SentinelOneCNSDigitalOceanUnitAudit:
         self.file_path = "digitalocean-{context}-units.csv".format(context=context) if context else 'digitalocean-units.csv'
         self.context_flag = "--context {context}".format(context=context) if context else ''
         self.total_resource_count = 0
+        self.total_workload_count = 0
 
         with open(self.file_path, 'w') as f:
-            f.write("Resource Type, Unit Counted\n")
+            f.write("Resource Type, Unit Counted, Workloads\n")
 
-    def add_result(self, k, v):
+    def add_result(self, k, v, w=""):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v}\n'.format(k=k,v=v))
+            f.write('{k}, {v}, {w}\n'.format(k=k,v=v,w=w))
 
     def count_all(self):
-        self.count("Digital Ocean Droplets", self.count_droplets)
-        self.add_result('TOTAL', self.total_resource_count)
+        self.count("Digital Ocean Droplets", self.count_droplets, workload_multiplier=1)
+        self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] results stored at", self.file_path)
         
-    def count(self, svcName, svcCb):
+    def count(self, svcName, svcCb, workload_multiplier):
         try:
             count = svcCb()
             if count:
-                self.add_result(svcName, count)
+                workloads = count * workload_multiplier
+                self.total_resource_count += count
+                self.total_workload_count += workloads
+
+                self.add_result(svcName, count, workloads)
             print('[Info] Fetched ', svcName)
         except subprocess.CalledProcessError as e:
             print('[Error] Error getting ', svcName)
@@ -45,11 +50,10 @@ class SentinelOneCNSDigitalOceanUnitAudit:
 
     def count_droplets(self):
       output = subprocess.check_output(
-          f"doctl  compute droplet  list --output json {self.context_flag}",
+          f"doctl compute droplet list --output json {self.context_flag}",
           text=True, shell=True
       )
       j = json.loads(output)
-      self.total_resource_count += len(j)
       return len(j)
 
 if __name__ == '__main__':

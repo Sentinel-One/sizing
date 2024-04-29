@@ -41,23 +41,24 @@ class SentinelOneCNSAlibabaUnitAudit:
         self.file_path = "alibaba-{profile}-units.csv".format(profile=profile) if profile else 'alibaba-units.csv'
         self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
         self.total_resource_count = 0
+        self.total_workload_count = 0
+        
         self.regions = alibaba_ecs_get_all_regions(self.profile_flag)
 
         with open(self.file_path, 'w') as f:
-            # Write Header
-            f.write("Resource Type, Unit Counted, Error Regions\n")
+            f.write("Resource Type, Unit Counted, Workloads, Error Regions\n")
 
-    def add_result(self, k, v, e=''):
+    def add_result(self, k, v, w, e=''):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v} {e}\n'.format(k=k,v=v,e=e))
+            f.write('{k}, {v}, {w}, {e}\n'.format(k=k,v=v,w=w,e=e))
 
     def count_all(self):
-        self.count("Alibaba ECS Instance", self.count_ecs_instances)
+        self.count("Alibaba ECS Instance", self.count_ecs_instances, workload_multiplier=1)
 
-        self.add_result('TOTAL', self.total_resource_count)
+        self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("results stored at", self.file_path)
 
-    def count(self, svcName, svcCb):
+    def count(self, svcName, svcCb, workload_multiplier):
         count = 0
         error = ''
         for region in self.regions:
@@ -74,8 +75,10 @@ class SentinelOneCNSAlibabaUnitAudit:
 
             print(f'[info] Fetched {svcName} - {region}')
         if count or error != '':
+            workloads = count * workload_multiplier
             self.total_resource_count += count
-            self.add_result(svcName, count, error)
+            self.total_workload_count += workloads
+            self.add_result(svcName, count, workloads, error)
 
     def count_ecs_instances(self, region):
         output = subprocess.check_output(

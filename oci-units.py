@@ -21,22 +21,24 @@ class SentinelOneCNSOCIUnitAudit:
         self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
 
         self.total_resource_count = 0
+        self.total_workload_count = 0
+        
         with open(self.file_path, 'w') as f:
-            f.write("Resource Type, Unit Counted, Error Compartments\n")
+            f.write("Resource Type, Unit Counted, Workloads, Error Compartments\n")
 
-    def add_result(self, k, v, e=''):
+    def add_result(self, k, v, w, e=''):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v} {e}\n'.format(k=k,v=v, e=e))
+            f.write('{k}, {v}, {w}, {e}\n'.format(k=k,v=v,w=w,e=e))
 
     def count_all(self):
         self.compartments = self.get_compartments()
-        self.count("Oracle Compute Instance", self.count_compute_instance)
-        self.count("Oracle Kubernetes Cluster", self.count_kubernetes_cluster)
+        self.count("Oracle Compute Instance", self.count_compute_instance, workload_multiplier=1)
+        self.count("Oracle Kubernetes Cluster", self.count_kubernetes_cluster, workload_multiplier=1)
 
-        self.add_result('TOTAL', self.total_resource_count)
+        self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] Results stored at", self.file_path)
 
-    def count(self, svcName, svcCb):
+    def count(self, svcName, svcCb, workload_multiplier):
         count = 0
         error = ''
         for compartmentId, compartmentName in self.compartments.items():
@@ -51,7 +53,11 @@ class SentinelOneCNSOCIUnitAudit:
                 print("[Error] parsing data from Cloud Provider\n", e)
                 error += f"{compartmentId} (JSON), "
             print(f'[Info] Fetched {compartmentName} - {svcName}')
-        self.add_result(svcName, count, error)
+        
+        workloads = count * workload_multiplier
+        self.total_workload_count += workloads
+        self.total_resource_count += count
+        self.add_result(svcName, count, workloads, error)
 
     def get_compartments(self):
         print("[Info] Fetching Compartments")
@@ -85,7 +91,6 @@ class SentinelOneCNSOCIUnitAudit:
       if output == None or output == "":
           return 0
       j = json.loads(output)
-      self.total_resource_count += len(j.get('data'))
       return len(j.get('data'))
 
     def count_kubernetes_cluster(self, compartmentId):
@@ -96,7 +101,6 @@ class SentinelOneCNSOCIUnitAudit:
       if output == None or output == "":
           return 0
       j = json.loads(output)
-      self.total_resource_count += len(j.get('data'))
       return len(j.get('data'))
 
 if __name__ == '__main__':
