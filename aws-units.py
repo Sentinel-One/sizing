@@ -4,7 +4,7 @@ import subprocess
 
 # Usage python3 ./aws-units.py --profiles <profile_1> <profile_2> <profile_3> <profile_4>
 
-parser = argparse.ArgumentParser(prog="PingSafe AWS Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS AWS Unit Audit")
 parser.add_argument("--profiles", help="AWS profile(s) separated by space", nargs='+', default=[], required=False)
 parser.add_argument("--regions", help="Regions to run script for", nargs='+', default=[], required=False)
 args = parser.parse_args()
@@ -44,16 +44,17 @@ def aws_describe_regions(profile):
     return regions_to_run
 
 
-class PingSafeAWSUnitAudit:
+class SentinelOneCNSAWSUnitAudit:
     def __init__(self, profile):
         self.file_path = "aws-{profile}-units.csv".format(profile=profile) if profile else 'aws-units.csv'
         self.profile_flag = "--profile {profile}".format(profile=profile) if profile else ''
         self.total_resource_count = 0
+        self.total_workload_count = 0
         self.regions = aws_describe_regions(profile)
 
         with open(self.file_path, 'w') as f:
             # Write Header
-            f.write("Resource Type, Unit Counted, Error Regions\n")
+            f.write("Resource Type, Unit Counted, Workloads, Error Regions\n")
 
     def build_aws_cli_command(self, service, api, paginate=True, region=None, query=None):
         region_flag = paginate_flag = query_flag = ""
@@ -69,21 +70,22 @@ class PingSafeAWSUnitAudit:
         )
         return cmd
 
-    def add_result(self, k, v, e=""):
+    def add_result(self, k, v, w, e=""):
         with open(self.file_path, 'a') as f:
-            f.write('{k}, {v}, {e}\n'.format(k=k, v=v, e=e))
+            f.write('{k}, {v}, {w}, {e}\n'.format(k=k, v=v, w=w, e=e))
 
     def count_all(self):
-        self.count("AWS EC2 Instance", self.count_ec2_instances)
-        self.count("AWS Container Repository", self.count_ecr_repositories)
-        self.count("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters)
-        self.count("AWS ECS Cluster", self.count_ecs_clusters)
-        self.count("AWS Lambda Function", self.count_lambda_functions)
+        self.count("AWS EC2 Instance", self.count_ec2_instances, workload_multiplier=1)
+        self.count("AWS Container Repository", self.count_ecr_repositories, workload_multiplier=0.1)
+        self.count("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters, workload_multiplier=1)
+        self.count("AWS ECS Cluster", self.count_ecs_clusters, workload_multiplier=1)
+        self.count("AWS Lambda Function", self.count_lambda_functions, workload_multiplier=0.02)
 
-        self.add_result('TOTAL', self.total_resource_count)
+
+        self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] Results stored at", self.file_path)
 
-    def count(self, svcName, svcCb):
+    def count(self, svcName, svcCb, workload_multiplier):
         count = 0
         error = ''
         for region in self.regions:
@@ -99,8 +101,12 @@ class PingSafeAWSUnitAudit:
                 error += f"{region} (JSON), "
             print(f'[info] Fetched {svcName} - {region}')
         if count or error != '':
+            workloads = count * workload_multiplier
+            
             self.total_resource_count += count
-            self.add_result(svcName, count, error)
+            self.total_workload_count += workloads
+            
+            self.add_result(svcName, count, workloads, error)
 
     def count_ec2_instances(self, region):
         output = subprocess.check_output(
@@ -186,4 +192,4 @@ class PingSafeAWSUnitAudit:
 if __name__ == '__main__':
     profiles = PROFILES if len(PROFILES) > 0 else [None]
     for p in profiles:
-        PingSafeAWSUnitAudit(p).count_all()
+        SentinelOneCNSAWSUnitAudit(p).count_all()

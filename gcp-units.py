@@ -4,7 +4,7 @@ import subprocess
 
 # Usage python3 ./gcp-units.py --projects <project_id_1> <project_id_2> <project_id_3>
 
-parser = argparse.ArgumentParser(prog="PingSafe GCP Unit Audit")
+parser = argparse.ArgumentParser(prog="SentinelOne CNS GCP Unit Audit")
 parser.add_argument("--projects", help="GCP Project ID(s) separated by space", nargs='+', default=[],required=True)
 args = parser.parse_args()
 
@@ -56,12 +56,13 @@ def gcloud_list_services():
             'enabled': service['state'] == 'ENABLED'
         }
 
-class PingSafeGCPUnitAudit:
+class SentinelOneCNSGCPUnitAudit:
     def __init__(self, project_id):
         self.existing_permissions = {}
         self.project_id = project_id
         self.file_path = f"gcp-{project_id}-units.csv"
         self.total_resource_count = 0
+        self.total_workload_count = 0
 
         if not gcloud_set_project(project_id):
             raise Exception("Check gcp project id/permissions")
@@ -78,7 +79,7 @@ class PingSafeGCPUnitAudit:
 
         with open(self.file_path, 'w') as f:
             # Write Header
-            f.write("Resource Type, Unit Counted\n")
+            f.write("Resource Type, Unit Counted, Workloads\n")
 
     def is_api_enabled(self, apis):
         for api in apis:
@@ -87,26 +88,29 @@ class PingSafeGCPUnitAudit:
                 return False
         return True
 
-    def add_result(self, k, v):
+    def add_result(self, k, v, w=""):
         with open(self.file_path, 'a') as f:
-            f.write(f'{k}, {v}\n')
+            f.write(f'{k}, {v}, {w}\n')
 
     def count_all(self):
-        self.count("GCP Compute Instance", self.count_compute_instances)
-        self.count("GCP Kubernetes Cluster (GKE)", self.count_kubernetes_clusters)
-        self.count("GCP Cloud Function", self.count_cloud_functions)
-        self.count("GCP Cloud Run", self.count_cloud_run)
-        self.count("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker)
-        self.count("GCP Container Repository", self.count_container_repository)
+        self.count("GCP Compute Instance", self.count_compute_instances, workload_multiplier=1)
+        self.count("GCP Kubernetes Cluster (GKE)", self.count_kubernetes_clusters, workload_multiplier=1)
+        self.count("GCP Cloud Function", self.count_cloud_functions, workload_multiplier=0.02)
+        self.count("GCP Cloud Run", self.count_cloud_run, workload_multiplier=0.02)
+        self.count("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker, workload_multiplier=0.1)
+        self.count("GCP Container Repository", self.count_container_repository, workload_multiplier=0.1)
 
-        self.add_result('TOTAL', self.total_resource_count)
+        self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] results stored at", self.file_path)
 
-    def count(self, svcName, svcCb):
+    def count(self, svcName, svcCb, workload_multiplier):
         try:
             count = svcCb()
             if count:
-                self.add_result(svcName, count)
+                workloads = count * workload_multiplier
+                self.total_workload_count +=  workloads
+                self.total_resource_count += count
+                self.add_result(svcName, count, workloads)
             print('[Info] Fetched ', svcName)
         except subprocess.CalledProcessError as e:
             print('[Error] Error getting ', svcName)
@@ -125,7 +129,6 @@ class PingSafeGCPUnitAudit:
             text=True, shell=True, 
         )
         j = json.loads(output)
-        self.total_resource_count += len(j)
         return len(j)
 
     def count_kubernetes_clusters(self):
@@ -136,7 +139,6 @@ class PingSafeGCPUnitAudit:
             text=True, shell=True, 
         )
         j = json.loads(output)
-        self.total_resource_count += len(j)
         return len(j)
 
     def count_cloud_functions(self):
@@ -147,7 +149,6 @@ class PingSafeGCPUnitAudit:
             text=True, shell=True, 
         )
         j = json.loads(output)
-        self.total_resource_count += len(j)
         return len(j)
 
     def count_cloud_run(self):
@@ -158,8 +159,6 @@ class PingSafeGCPUnitAudit:
             text=True, shell=True, 
         )
         j = json.loads(output)
-
-        self.total_resource_count += len(j)
         return len(j)
 
     def count_artifact_repository_docker(self):
@@ -170,7 +169,6 @@ class PingSafeGCPUnitAudit:
             universal_newlines=True, text=True, shell=True,
         )
         j = json.loads(output)
-        self.total_resource_count += len(j)
         return len(j)
 
     def count_container_repository(self):
@@ -181,7 +179,6 @@ class PingSafeGCPUnitAudit:
             text=True, shell=True
         )
         j = json.loads(output)
-        self.total_resource_count += len(j)
         return len(j)
 
 GCP_CF_LOCATIONS = [
@@ -214,6 +211,6 @@ if __name__ == '__main__':
     projects = PROJECTS if len(PROJECTS) > 0 else [None]
     for projectId in projects:
         try:
-            PingSafeGCPUnitAudit(projectId).count_all()
+            SentinelOneCNSGCPUnitAudit(projectId).count_all()
         except Exception as e:
             print("[Error]", e)

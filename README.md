@@ -1,4 +1,4 @@
-# PingSafe Sizing Scripts
+# SentinelOne CNS Sizing Scripts
 
 ### Google Cloud Script
 
