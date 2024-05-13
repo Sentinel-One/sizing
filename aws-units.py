@@ -56,17 +56,19 @@ class SentinelOneCNSAWSUnitAudit:
             # Write Header
             f.write("Resource Type, Unit Counted, Workloads, Error Regions\n")
 
-    def build_aws_cli_command(self, service, api, paginate=True, region=None, query=None):
-        region_flag = paginate_flag = query_flag = ""
+    def build_aws_cli_command(self, service, api, paginate=True, region=None, query=None, additional_args=None):
+        region_flag = paginate_flag = query_flag = additional_flag = ""
         if region:
             region_flag = "--region {region}".format(region=region)
         if query:
             query_flag = "--query {query}".format(query=query)
         if not paginate:
             paginate_flag = "--no-paginate"
-        cmd = "aws {region_flag} {profile_flag} --output json {service} {api} {query_flag} {paginate_flag}".format(
+        if additional_args:
+            additional_flag = additional_args
+        cmd = "aws {region_flag} {profile_flag} --output json {service} {api} {query_flag} {paginate_flag} {additional_flag}".format(
             region_flag=region_flag, profile_flag=self.profile_flag, service=service, api=api,
-            paginate_flag=paginate_flag, query_flag=query_flag
+            paginate_flag=paginate_flag, query_flag=query_flag, additional_flag=additional_flag
         )
         return cmd
 
@@ -80,6 +82,7 @@ class SentinelOneCNSAWSUnitAudit:
         self.count("AWS Kubernetes Cluster (EKS)", self.count_eks_clusters, workload_multiplier=1)
         self.count("AWS ECS Cluster", self.count_ecs_clusters, workload_multiplier=1)
         self.count("AWS Lambda Function", self.count_lambda_functions, workload_multiplier=0.02)
+        self.count("Amazon ECS Tasks (on Fargate)", self.count_ecs_tasks_on_fargate, workload_multiplier=0.1)
 
 
         self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
@@ -187,6 +190,61 @@ class SentinelOneCNSAWSUnitAudit:
         if j is None or len(j) == 0:
             return 0
         return len(j)
+    
+    def count_ecs_tasks_on_fargate(self, region):
+        output = subprocess.check_output(
+            # f"aws --region {region} {self.profile_flag} ecs list-clusters --query 'clusterArns' --output json --no-paginate",
+            self.build_aws_cli_command(
+                service="ecs",
+                api="list-clusters",
+                paginate=False,
+                query="\"clusterArns\"",
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+        )
+        cluster_arns = json.loads(output)
+        
+        count_fargate_tasks = 0
+        
+        if len(cluster_arns) == 0:
+            return count_fargate_tasks
+        
+        for cluster_arn in cluster_arns:
+            output = subprocess.check_output(
+                # f"aws --region {region} {self.profile_flag} ecs list-tasks --query 'taskArns' --output json --no-paginate --cluster {cluster_arn}",
+                self.build_aws_cli_command(
+                    service="ecs",
+                    api="list-tasks",
+                    paginate=False,
+                    query="\"taskArns\"",
+                    additional_args=f"--cluster {cluster_arn}",
+                    region=region),
+                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+            )
+            tasks_arns = json.loads(output)
+            
+            if len(tasks_arns) == 0:
+                continue
+            
+            output = subprocess.check_output(
+                # f"aws --region {region} {self.profile_flag} ecs describe-tasks --query 'tasks' --output json --no-paginate --cluster {cluster_arn} --tasks task_arn1 task_arn2 ...",
+                self.build_aws_cli_command(
+                    service="ecs",
+                    api="describe-tasks",
+                    paginate=False,
+                    query="\"tasks\"",
+                    additional_args=f'--cluster {cluster_arn} --tasks {" ".join(tasks_arns)}',
+                    region=region),
+                universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+            )
+            
+            tasks = json.loads(output)
+        
+            for task in tasks:
+                if task.get('launchType') == 'FARGATE':
+                    count_fargate_tasks += 1
+            
+        return count_fargate_tasks
 
 
 if __name__ == '__main__':
