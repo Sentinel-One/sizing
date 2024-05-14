@@ -73,6 +73,7 @@ class SentinelOneCNSAzureUnitAudit:
         self.count("Azure Virtual Machine", self.count_vm_instances, workload_multiplier=1)
         self.count("Azure Kubernetes Cluster (AKS)", self.count_kubernetes_clusters, workload_multiplier=1)
         self.count("Azure Container Repository", self.count_container_repository, workload_multiplier=0.1)
+        self.count("Azure Container Instances (ACI)", self.count_container_instances, workload_multiplier=0.1)
 
         self.add_result("Total Resource", self.total_resource_count, round(self.total_workload_count))
         print("[Info] Results stored at", self.file_path)
@@ -117,8 +118,12 @@ class SentinelOneCNSAzureUnitAudit:
             output = call_with_output(f"az acr repository list {self.subscription_flag} --name {registryName} --output json")
             repositories = json.loads(output)
             total_repositories += len(repositories)
-
         return total_repositories
+    
+    def count_container_instances(self):
+        output = call_with_output(f"az container list {self.subscription_flag} --output json --only-show-errors")
+        j = json.loads(output)
+        return len(j)
 
 if __name__ == '__main__':
     subscriptions = SUBSCRIPTIONS if len(SUBSCRIPTIONS) > 0 else [None]
