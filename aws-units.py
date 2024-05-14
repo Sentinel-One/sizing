@@ -64,7 +64,7 @@ class SentinelOneCNSAWSUnitAudit:
             query_flag = "--query {query}".format(query=query)
         if not paginate:
             paginate_flag = "--no-paginate"
-        if additional_args:
+        if additional_args is not None:
             additional_flag = additional_args
         cmd = "aws {region_flag} {profile_flag} --output json {service} {api} {query_flag} {paginate_flag} {additional_flag}".format(
             region_flag=region_flag, profile_flag=self.profile_flag, service=service, api=api,
