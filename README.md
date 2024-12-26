@@ -48,7 +48,8 @@ python3 ./aws-units.py --profiles default profile_2 ... profile_n
 Important Information:
 
 - Script requires at least one profile to be passed with the **required** `--profiles` flag
-- if there are no named profiles configured, the script requires the `"default"` profile to be passed, eg: `--profiles default`
+- If there are no named profiles configured, the script requires the `"default"` profile to be passed, eg: `--profiles default`
+- To generate a list of all AWS profiles in `~/.aws/config`  on MacOS or Linux, you can run this command and copy/paste the result `awk '/\[profile / {gsub(/\[profile |\]/, ""); printf "%s ", $0}' ~/.aws/config | sed 's/ *$//'`
 - For more information on named profile configuration for aws cli, please refer to https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html and https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 - The script may take a longer time to run based on the size of the cloud for which it is being run for
 - If you pass many profiles, it may take a considerable amount of time, subject to the size of the cloud
