@@ -83,10 +83,31 @@ class SentinelOneCNSAWSUnitAudit:
         self.count("AWS ECS Cluster", self.count_ecs_clusters, workload_multiplier=1)
         self.count("AWS Lambda Function", self.count_lambda_functions, workload_multiplier=0.02)
         self.count("Amazon ECS Tasks (on Fargate)", self.count_ecs_tasks_on_fargate, workload_multiplier=0.1)
-
+        self.count_global("AWS S3 Bucket", self.count_s3_buckets, workload_multiplier=0.2)
+        self.count("AWS RDS Instance", self.count_rds_instances, workload_multiplier=1)
 
         self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] Results stored at", self.file_path)
+
+    def count_global(self, svcName, svcCb, workload_multiplier):
+        count = 0
+        error = ''
+        try:
+            count = svcCb()
+        except subprocess.CalledProcessError as e:
+            print('[Error] Error getting ', svcName)
+            print("[Error] [Command]", e.cmd)
+            print("[Error] [Command-Output]", e.output)
+            error = "global"
+        except json.decoder.JSONDecodeError as e:
+            print("[Error] parsing data from Cloud Provider\n \n", e)
+            error = "global (JSON)"
+        print(f'[info] Fetched {svcName} - global')
+        if count or error != '':
+            workloads = count * workload_multiplier
+            self.total_resource_count += count
+            self.total_workload_count += workloads
+            self.add_result(svcName, count, workloads, error)
 
     def count(self, svcName, svcCb, workload_multiplier):
         count = 0
@@ -105,10 +126,10 @@ class SentinelOneCNSAWSUnitAudit:
             print(f'[info] Fetched {svcName} - {region}')
         if count or error != '':
             workloads = count * workload_multiplier
-            
+
             self.total_resource_count += count
             self.total_workload_count += workloads
-            
+
             self.add_result(svcName, count, workloads, error)
 
     def count_ec2_instances(self, region):
@@ -190,7 +211,7 @@ class SentinelOneCNSAWSUnitAudit:
         if j is None or len(j) == 0:
             return 0
         return len(j)
-    
+
     def count_ecs_tasks_on_fargate(self, region):
         output = subprocess.check_output(
             # f"aws --region {region} {self.profile_flag} ecs list-clusters --query 'clusterArns' --output json --no-paginate",
@@ -203,12 +224,12 @@ class SentinelOneCNSAWSUnitAudit:
             universal_newlines=True, shell=True, stderr=subprocess.STDOUT
         )
         cluster_arns = json.loads(output)
-        
+
         count_fargate_tasks = 0
-        
+
         if len(cluster_arns) == 0:
             return count_fargate_tasks
-        
+
         for cluster_arn in cluster_arns:
             output = subprocess.check_output(
                 # f"aws --region {region} {self.profile_flag} ecs list-tasks --query 'taskArns' --output json --no-paginate --cluster {cluster_arn}",
@@ -222,10 +243,10 @@ class SentinelOneCNSAWSUnitAudit:
                 universal_newlines=True, shell=True, stderr=subprocess.STDOUT
             )
             tasks_arns = json.loads(output)
-            
+
             if len(tasks_arns) == 0:
                 continue
-            
+
             output = subprocess.check_output(
                 # f"aws --region {region} {self.profile_flag} ecs describe-tasks --query 'tasks' --output json --no-paginate --cluster {cluster_arn} --tasks task_arn1 task_arn2 ...",
                 self.build_aws_cli_command(
@@ -237,14 +258,44 @@ class SentinelOneCNSAWSUnitAudit:
                     region=region),
                 universal_newlines=True, shell=True, stderr=subprocess.STDOUT
             )
-            
+
             tasks = json.loads(output)
-        
+
             for task in tasks:
                 if task.get('launchType') == 'FARGATE':
                     count_fargate_tasks += 1
-            
+
         return count_fargate_tasks
+
+
+    def count_s3_buckets(self):
+        output = subprocess.check_output(
+            self.build_aws_cli_command(
+                service="s3api",
+                api="list-buckets",
+                paginate=False,
+                query="\"Buckets[].Name\""),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+        )
+        j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
+        return len(j)
+
+    def count_rds_instances(self, region):
+        output = subprocess.check_output(
+            self.build_aws_cli_command(
+                service="rds",
+                api="describe-db-instances",
+                paginate=False,
+                query="\"DBInstances[].DBInstanceIdentifier\"",
+                region=region),
+            universal_newlines=True, shell=True, stderr=subprocess.STDOUT
+        )
+        j = json.loads(output)
+        if j is None or len(j) == 0:
+            return 0
+        return len(j)
 
 
 if __name__ == '__main__':

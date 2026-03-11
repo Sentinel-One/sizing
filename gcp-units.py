@@ -99,6 +99,8 @@ class SentinelOneCNSGCPUnitAudit:
         self.count("GCP Cloud Run", self.count_cloud_run, workload_multiplier=0.02)
         self.count("GCP Artifact Repository (only docker repositories)", self.count_artifact_repository_docker, workload_multiplier=0.1)
         self.count("GCP Container Repository", self.count_container_repository, workload_multiplier=0.1)
+        self.count("GCP Cloud Storage Bucket", self.count_gcs_buckets, workload_multiplier=0.2)
+        self.count("GCP Cloud SQL Instance", self.count_cloud_sql_instances, workload_multiplier=1)
 
         self.add_result('TOTAL', self.total_resource_count, round(self.total_workload_count))
         print("[Info] results stored at", self.file_path)
@@ -126,7 +128,7 @@ class SentinelOneCNSGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             "gcloud compute instances list --format json",
-            text=True, shell=True, 
+            text=True, shell=True,
         )
         j = json.loads(output)
         return len(j)
@@ -136,7 +138,7 @@ class SentinelOneCNSGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             "gcloud container clusters list --format json",
-            text=True, shell=True, 
+            text=True, shell=True,
         )
         j = json.loads(output)
         return len(j)
@@ -146,7 +148,7 @@ class SentinelOneCNSGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud functions list --regions={','.join(GCP_CF_LOCATIONS)} --format json",
-            text=True, shell=True, 
+            text=True, shell=True,
         )
         j = json.loads(output)
         return len(j)
@@ -156,7 +158,7 @@ class SentinelOneCNSGCPUnitAudit:
             return 0
         output = subprocess.check_output(
             f"gcloud run services list --format json",
-            text=True, shell=True, 
+            text=True, shell=True,
         )
         j = json.loads(output)
         return len(j)
@@ -177,6 +179,26 @@ class SentinelOneCNSGCPUnitAudit:
         output = subprocess.check_output(
             f"gcloud container images list --format json",
             text=True, shell=True
+        )
+        j = json.loads(output)
+        return len(j)
+
+    def count_gcs_buckets(self):
+        if not self.is_api_enabled(["storage-api.googleapis.com"]):
+            return 0
+        output = subprocess.check_output(
+            "gsutil ls",
+            text=True, shell=True, stderr=subprocess.STDOUT
+        )
+        buckets = [line for line in output.strip().split("\n") if line.startswith("gs://")]
+        return len(buckets)
+
+    def count_cloud_sql_instances(self):
+        if not self.is_api_enabled(["sqladmin.googleapis.com"]):
+            return 0
+        output = subprocess.check_output(
+            "gcloud sql instances list --format json",
+            text=True, shell=True, stderr=subprocess.STDOUT
         )
         j = json.loads(output)
         return len(j)

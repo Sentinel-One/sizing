@@ -5,7 +5,8 @@ import subprocess
 # Usage python3 ./azure-units.py --subscriptions <subscription_1> <subscription_2> <subscription_3> <subscription_4>
 
 parser = argparse.ArgumentParser(prog="SentinelOne CNS Azure Unit Audit")
-parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[], required=True)
+parser.add_argument("--subscriptions", help="Azure subscription(s) separated by space", nargs='+', default=[],
+                    required=True)
 args = parser.parse_args()
 
 SUBSCRIPTIONS = args.subscriptions
@@ -14,8 +15,9 @@ SUBSCRIPTIONS = args.subscriptions
 def call_with_output(command):
     return subprocess.check_output(command, universal_newlines=True, text=True, shell=True, stderr=subprocess.STDOUT)
 
+
 def check_extenstion(name):
-    print("Checking extension: ",name)
+    print("Checking extension: ", name)
     success = False
     try:
         output = call_with_output(f"az extension show -n {name}")
@@ -32,6 +34,7 @@ def check_extenstion(name):
 
     return success
 
+
 def check_azure_subscription(subscription_id):
     try:
         output = call_with_output(f"az account subscription list --output json --only-show-errors")
@@ -42,19 +45,21 @@ def check_azure_subscription(subscription_id):
     except subprocess.CalledProcessError as e:
         print('[Error] Error checking subscription ', subscription_id)
         print("[Error] [Command]", e.cmd)
-        print("[Error] [Command-Output]", e.output)    
+        print("[Error] [Command-Output]", e.output)
 
     return False
+
 
 class SentinelOneCNSAzureUnitAudit:
     def __init__(self, subscription):
         self.file_path = f"azure-{subscription}-units.csv" if subscription else 'azure-units.csv'
-        self.subscription_flag = f'--subscription "{subscription}"'.format(subscription=subscription) if subscription else ''
+        self.subscription_flag = f'--subscription "{subscription}"'.format(
+            subscription=subscription) if subscription else ''
 
         self.total_resource_count = 0
         self.total_workload_count = 0
 
-        extensions= () # example "containerapp",
+        extensions = ()  # example "containerapp",
         for extension in extensions:
             if not check_extenstion(extension):
                 raise Exception(f"Extension not installed: {extension}. Install using az extension add -n {extension}")
@@ -74,6 +79,10 @@ class SentinelOneCNSAzureUnitAudit:
         self.count("Azure Kubernetes Cluster (AKS)", self.count_kubernetes_clusters, workload_multiplier=1)
         self.count("Azure Container Repository", self.count_container_repository, workload_multiplier=0.1)
         self.count("Azure Container Instances (ACI)", self.count_container_instances, workload_multiplier=0.1)
+        self.count("Azure Blob Storage Container", self.count_blob_containers, workload_multiplier=0.2)
+        self.count("Azure SQL Instance", self.count_sql_instances, workload_multiplier=1)
+        self.count("Azure MySQL Flexible Server", self.count_mysql_flexible_servers, workload_multiplier=1)
+        self.count("Azure PostgreSQL Flexible Server", self.count_postgres_flexible_servers, workload_multiplier=1)
 
         self.add_result("Total Resource", self.total_resource_count, round(self.total_workload_count))
         print("[Info] Results stored at", self.file_path)
@@ -115,15 +124,64 @@ class SentinelOneCNSAzureUnitAudit:
 
         for registry in registries:
             registryName = registry.get("name")
-            output = call_with_output(f"az acr repository list {self.subscription_flag} --name {registryName} --output json")
+            output = call_with_output(
+                f"az acr repository list {self.subscription_flag} --name {registryName} --output json")
             repositories = json.loads(output)
             total_repositories += len(repositories)
         return total_repositories
-    
+
     def count_container_instances(self):
         output = call_with_output(f"az container list {self.subscription_flag} --output json --only-show-errors")
         j = json.loads(output)
         return len(j)
+
+    def count_blob_containers(self):
+        output = call_with_output(f"az storage account list {self.subscription_flag} --output json --only-show-errors")
+        accounts = json.loads(output)
+        total_containers = 0
+        for account in accounts:
+            account_name = account.get("name")
+            try:
+                output = call_with_output(
+                    f"az storage container list --account-name {account_name} --auth-mode login --output json --only-show-errors")
+                containers = json.loads(output)
+                total_containers += len(containers)
+            except subprocess.CalledProcessError as e:
+                print(f'[Error] Error listing containers for storage account {account_name}')
+                print("[Error] [Command]", e.cmd)
+                print("[Error] [Command-Output]", e.output)
+        return total_containers
+
+    def count_sql_instances(self):
+        output = call_with_output(f"az sql server list {self.subscription_flag} --output json --only-show-errors")
+        servers = json.loads(output)
+        total_dbs = 0
+        for server in servers:
+            server_name = server.get("name")
+            resource_group = server.get("resourceGroup")
+            try:
+                output = call_with_output(
+                    f"az sql db list --server {server_name} --resource-group {resource_group} {self.subscription_flag} --output json --only-show-errors")
+                dbs = json.loads(output)
+                total_dbs += len([db for db in dbs if db.get("name") != "master"])
+            except subprocess.CalledProcessError as e:
+                print(f'[Error] Error listing databases for SQL server {server_name}')
+                print("[Error] [Command]", e.cmd)
+                print("[Error] [Command-Output]", e.output)
+        return total_dbs
+
+    def count_mysql_flexible_servers(self):
+        output = call_with_output(
+            f"az mysql flexible-server list {self.subscription_flag} --output json --only-show-errors"
+        )
+        servers = json.loads(output)
+        return len(servers)
+
+    def count_postgres_flexible_servers(self):
+        output = call_with_output(f"az postgres flexible-server list {self.subscription_flag} --output json --only-show-errors")
+        servers = json.loads(output)
+        return len(servers)
+
 
 if __name__ == '__main__':
     subscriptions = SUBSCRIPTIONS if len(SUBSCRIPTIONS) > 0 else [None]
@@ -131,4 +189,4 @@ if __name__ == '__main__':
         try:
             SentinelOneCNSAzureUnitAudit(s).count_all()
         except Exception as e:
-            print("[Error]",e)
+            print("[Error]", e)
